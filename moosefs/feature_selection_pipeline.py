@@ -179,8 +179,7 @@ class FeatureSelectionPipeline:
             self.fs_subsets.update(partial_fs_subsets)
             self.merged_features.update(partial_merged_features)
             for dict_idx in range(num_metrics):
-                for key in sorted(partial_result_dicts[dict_idx].keys()):
-                    result_dicts[dict_idx][key] = partial_result_dicts[dict_idx][key]
+                result_dicts[dict_idx].update(partial_result_dicts[dict_idx])
 
         # Compute Pareto analysis as usual
         means_list = self._calculate_means(result_dicts, self.subgroup_names)
@@ -312,7 +311,30 @@ class FeatureSelectionPipeline:
             Averaged metric values per configured metric.
         """
         self._set_seed(self.random_state)
-        return [metric.compute(X_train, y_train, X_test, y_test) for metric in self.metrics]
+        if not self.metrics:
+            return []
+
+        shared_results: dict = {}
+        metric_values: list = []
+
+        for metric in self.metrics:
+            aggregator = getattr(metric, "aggregate_from_results", None)
+            if not callable(aggregator):
+                metric_values.append(metric.compute(X_train, y_train, X_test, y_test))
+                continue
+
+            signature_fn = getattr(metric, "model_signature", None)
+            cache_key = signature_fn() if callable(signature_fn) else None
+            results = shared_results.get(cache_key) if cache_key is not None else None
+
+            if results is None:
+                results = metric.train_and_predict(X_train, y_train, X_test, y_test)
+                if cache_key is not None:
+                    shared_results[cache_key] = results
+
+            metric_values.append(aggregator(y_test, results))
+
+        return metric_values
 
     def _compute_metrics(
         self,
@@ -338,19 +360,23 @@ class FeatureSelectionPipeline:
         num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
 
+        feature_train = train_data.drop(columns="target")
+        feature_test = test_data.drop(columns="target")
+        y_train = train_data["target"]
+        y_test = test_data["target"]
+        column_positions = {name: position for position, name in enumerate(feature_train.columns)}
+
         for group in self.subgroup_names:
             key = (idx, group)
             if key not in merged_features_local:
                 continue
 
-            # order selected features to ensure consistency (decision tree)
-            selected_feats = [c for c in train_data.columns if c in merged_features_local[key]]
-            # selected_feats = list(merged_features_local[key])
+            merged_feature_names = merged_features_local[key]
+            ordered_features = [feature for feature in merged_feature_names if feature in column_positions]
+            ordered_features.sort(key=column_positions.__getitem__)
 
-            X_train_subset = train_data[selected_feats]
-            y_train = train_data["target"]
-            X_test_subset = test_data[selected_feats]
-            y_test = test_data["target"]
+            X_train_subset = feature_train[ordered_features]
+            X_test_subset = feature_test[ordered_features]
 
             metric_vals = self._compute_performance_metrics(X_train_subset, y_train, X_test_subset, y_test)
             for m_idx, val in enumerate(metric_vals):
@@ -360,7 +386,7 @@ class FeatureSelectionPipeline:
             stability = compute_stability_metrics(fs_lists) if fs_lists else 0
 
             if agreement_flag:
-                agreement = diversity_agreement(fs_lists, selected_feats, alpha=0.5) if fs_lists else 0
+                agreement = diversity_agreement(fs_lists, ordered_features, alpha=0.5) if fs_lists else 0
                 local_result_dicts[len(metric_vals)][key] = agreement
                 local_result_dicts[len(metric_vals) + 1][key] = stability
             else:

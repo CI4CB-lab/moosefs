@@ -12,6 +12,8 @@ class Feature:
         selected: Whether the feature is selected.
     """
 
+    __slots__ = ("name", "score", "selected")
+
     def __init__(self, name: str, score: Optional[float] = None, selected: bool = False) -> None:
         self.name: str = name
         self.score: Optional[float] = score

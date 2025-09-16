@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from joblib import hash as joblib_hash
 import numpy as np
 from sklearn.ensemble import (
     GradientBoostingClassifier,
@@ -39,6 +40,17 @@ class BaseMetric:
         self.name = name
         self.task = task
         self.models = self._initialize_models()
+
+    def model_signature(self) -> str:
+        """Return a stable signature describing the internal model set."""
+        signature_payload = {
+            name: (
+                f"{model.__class__.__module__}.{model.__class__.__qualname__}",
+                model.get_params(deep=True),
+            )
+            for name, model in self.models.items()
+        }
+        return f"{self.task}:{joblib_hash(signature_payload)}"
 
     def _initialize_models(self) -> dict:
         """Initialize task-specific models.
@@ -117,7 +129,11 @@ class RegressionMetric(BaseMetric):
     ) -> float:
         """Average the metric over the internal model set."""
         results = self.train_and_predict(X_train, y_train, X_test, y_test)
-        return np.mean([self._metric_func(y_test, res["predictions"]) for res in results.values()])
+        return self.aggregate_from_results(y_test, results)
+
+    def aggregate_from_results(self, y_test: np.ndarray, results: dict) -> float:
+        """Aggregate metric value from cached prediction results."""
+        return float(np.mean([self._metric_func(y_test, res["predictions"]) for res in results.values()]))
 
     def _metric_func(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
         """Metric function to be overridden by subclasses."""
@@ -163,8 +179,14 @@ class ClassificationMetric(BaseMetric):
     ) -> float:
         """Average the metric over the internal model set."""
         results = self.train_and_predict(X_train, y_train, X_test, y_test)
-        return np.mean(
-            [self._metric_func(y_test, res["predictions"], res.get("probabilities")) for res in results.values()]
+        return self.aggregate_from_results(y_test, results)
+
+    def aggregate_from_results(self, y_test: np.ndarray, results: dict) -> float:
+        """Aggregate metric value from cached prediction results."""
+        return float(
+            np.mean(
+                [self._metric_func(y_test, res["predictions"], res.get("probabilities")) for res in results.values()]
+            )
         )
 
     def _metric_func(
