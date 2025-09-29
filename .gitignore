@@ -36,6 +36,7 @@ coverage.xml
 # IDE/editor settings
 .vscode/
 .idea/
+.history/
 
 # OS files
 .DS_Store
