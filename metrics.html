@@ -53,6 +53,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Metrics</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric"><code class="docutils literal notranslate"><span class="pre">BaseMetric</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric.__init__"><code class="docutils literal notranslate"><span class="pre">BaseMetric.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric.model_signature"><code class="docutils literal notranslate"><span class="pre">BaseMetric.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric._initialize_models"><code class="docutils literal notranslate"><span class="pre">BaseMetric._initialize_models()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric.train_and_predict"><code class="docutils literal notranslate"><span class="pre">BaseMetric.train_and_predict()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.BaseMetric.compute"><code class="docutils literal notranslate"><span class="pre">BaseMetric.compute()</span></code></a></li>
@@ -61,8 +62,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric"><code class="docutils literal notranslate"><span class="pre">RegressionMetric</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric.__init__"><code class="docutils literal notranslate"><span class="pre">RegressionMetric.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric.compute"><code class="docutils literal notranslate"><span class="pre">RegressionMetric.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">RegressionMetric.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric._metric_func"><code class="docutils literal notranslate"><span class="pre">RegressionMetric._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric._initialize_models"><code class="docutils literal notranslate"><span class="pre">RegressionMetric._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric.model_signature"><code class="docutils literal notranslate"><span class="pre">RegressionMetric.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RegressionMetric.train_and_predict"><code class="docutils literal notranslate"><span class="pre">RegressionMetric.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -70,7 +73,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score.__init__"><code class="docutils literal notranslate"><span class="pre">R2Score.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score._metric_func"><code class="docutils literal notranslate"><span class="pre">R2Score._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score._initialize_models"><code class="docutils literal notranslate"><span class="pre">R2Score._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">R2Score.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score.compute"><code class="docutils literal notranslate"><span class="pre">R2Score.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score.model_signature"><code class="docutils literal notranslate"><span class="pre">R2Score.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.R2Score.train_and_predict"><code class="docutils literal notranslate"><span class="pre">R2Score.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -78,7 +83,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.__init__"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError._metric_func"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError._initialize_models"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.compute"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.model_signature"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.train_and_predict"><code class="docutils literal notranslate"><span class="pre">MeanAbsoluteError.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -86,15 +93,19 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError.__init__"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError._metric_func"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError._initialize_models"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError.compute"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError.model_signature"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.MeanSquaredError.train_and_predict"><code class="docutils literal notranslate"><span class="pre">MeanSquaredError.train_and_predict()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric.__init__"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric.compute"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric._metric_func"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric._initialize_models"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric.model_signature"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.ClassificationMetric.train_and_predict"><code class="docutils literal notranslate"><span class="pre">ClassificationMetric.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -102,7 +113,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss.__init__"><code class="docutils literal notranslate"><span class="pre">LogLoss.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss._metric_func"><code class="docutils literal notranslate"><span class="pre">LogLoss._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss._initialize_models"><code class="docutils literal notranslate"><span class="pre">LogLoss._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">LogLoss.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss.compute"><code class="docutils literal notranslate"><span class="pre">LogLoss.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss.model_signature"><code class="docutils literal notranslate"><span class="pre">LogLoss.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.LogLoss.train_and_predict"><code class="docutils literal notranslate"><span class="pre">LogLoss.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -110,7 +123,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score.__init__"><code class="docutils literal notranslate"><span class="pre">F1Score.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score._metric_func"><code class="docutils literal notranslate"><span class="pre">F1Score._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score._initialize_models"><code class="docutils literal notranslate"><span class="pre">F1Score._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">F1Score.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score.compute"><code class="docutils literal notranslate"><span class="pre">F1Score.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score.model_signature"><code class="docutils literal notranslate"><span class="pre">F1Score.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.F1Score.train_and_predict"><code class="docutils literal notranslate"><span class="pre">F1Score.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -118,7 +133,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy.__init__"><code class="docutils literal notranslate"><span class="pre">Accuracy.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy._metric_func"><code class="docutils literal notranslate"><span class="pre">Accuracy._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy._initialize_models"><code class="docutils literal notranslate"><span class="pre">Accuracy._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">Accuracy.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy.compute"><code class="docutils literal notranslate"><span class="pre">Accuracy.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy.model_signature"><code class="docutils literal notranslate"><span class="pre">Accuracy.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.Accuracy.train_and_predict"><code class="docutils literal notranslate"><span class="pre">Accuracy.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -126,7 +143,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore.__init__"><code class="docutils literal notranslate"><span class="pre">PrecisionScore.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore._metric_func"><code class="docutils literal notranslate"><span class="pre">PrecisionScore._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore._initialize_models"><code class="docutils literal notranslate"><span class="pre">PrecisionScore._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">PrecisionScore.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore.compute"><code class="docutils literal notranslate"><span class="pre">PrecisionScore.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore.model_signature"><code class="docutils literal notranslate"><span class="pre">PrecisionScore.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.PrecisionScore.train_and_predict"><code class="docutils literal notranslate"><span class="pre">PrecisionScore.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -134,7 +153,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore.__init__"><code class="docutils literal notranslate"><span class="pre">RecallScore.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore._metric_func"><code class="docutils literal notranslate"><span class="pre">RecallScore._metric_func()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore._initialize_models"><code class="docutils literal notranslate"><span class="pre">RecallScore._initialize_models()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore.aggregate_from_results"><code class="docutils literal notranslate"><span class="pre">RecallScore.aggregate_from_results()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore.compute"><code class="docutils literal notranslate"><span class="pre">RecallScore.compute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore.model_signature"><code class="docutils literal notranslate"><span class="pre">RecallScore.model_signature()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.metrics.performance_metrics.RecallScore.train_and_predict"><code class="docutils literal notranslate"><span class="pre">RecallScore.train_and_predict()</span></code></a></li>
 </ul>
 </li>
@@ -192,6 +213,12 @@
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.BaseMetric.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/performance_metrics.html#BaseMetric.model_signature"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.performance_metrics.BaseMetric.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -258,6 +285,12 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RegressionMetric.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/performance_metrics.html#RegressionMetric.aggregate_from_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.performance_metrics.RegressionMetric.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RegressionMetric._metric_func">
 <span class="sig-name descname"><span class="pre">_metric_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/performance_metrics.html#RegressionMetric._metric_func"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.performance_metrics.RegressionMetric._metric_func" title="Link to this definition"></a></dt>
 <dd><p>Metric function to be overridden by subclasses.</p>
@@ -272,6 +305,12 @@
 <dd class="field-odd"><p>Mapping from model label to estimator instance.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RegressionMetric.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.RegressionMetric.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -331,9 +370,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.R2Score.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.R2Score.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.R2Score.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.R2Score.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.R2Score.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.R2Score.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -393,9 +444,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanAbsoluteError.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanAbsoluteError.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanAbsoluteError.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanAbsoluteError.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -455,9 +518,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanSquaredError.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanSquaredError.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanSquaredError.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanSquaredError.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.MeanSquaredError.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.MeanSquaredError.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -507,6 +582,12 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.ClassificationMetric.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/performance_metrics.html#ClassificationMetric.aggregate_from_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.performance_metrics.ClassificationMetric.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.ClassificationMetric._metric_func">
 <span class="sig-name descname"><span class="pre">_metric_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_proba</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/performance_metrics.html#ClassificationMetric._metric_func"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.performance_metrics.ClassificationMetric._metric_func" title="Link to this definition"></a></dt>
 <dd><p>Metric function to be overridden by subclasses.</p>
@@ -521,6 +602,12 @@
 <dd class="field-odd"><p>Mapping from model label to estimator instance.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.ClassificationMetric.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.ClassificationMetric.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -580,9 +667,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.LogLoss.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.LogLoss.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.LogLoss.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.LogLoss.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.LogLoss.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.LogLoss.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -642,9 +741,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.F1Score.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.F1Score.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.F1Score.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.F1Score.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.F1Score.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.F1Score.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -704,9 +815,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.Accuracy.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.Accuracy.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.Accuracy.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.Accuracy.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.Accuracy.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.Accuracy.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -766,9 +889,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.PrecisionScore.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.PrecisionScore.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.PrecisionScore.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.PrecisionScore.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.PrecisionScore.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.PrecisionScore.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -828,9 +963,21 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RecallScore.aggregate_from_results">
+<span class="sig-name descname"><span class="pre">aggregate_from_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.RecallScore.aggregate_from_results" title="Link to this definition"></a></dt>
+<dd><p>Aggregate metric value from cached prediction results.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RecallScore.compute">
 <span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_train</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_test</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.RecallScore.compute" title="Link to this definition"></a></dt>
 <dd><p>Average the metric over the internal model set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.metrics.performance_metrics.RecallScore.model_signature">
+<span class="sig-name descname"><span class="pre">model_signature</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#moosefs.metrics.performance_metrics.RecallScore.model_signature" title="Link to this definition"></a></dt>
+<dd><p>Return a stable signature describing the internal model set.</p>
 </dd></dl>
 
 <dl class="py method">
