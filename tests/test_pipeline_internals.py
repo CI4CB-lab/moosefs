@@ -8,10 +8,11 @@ def _tiny_pipeline():
     # very small dataset to avoid heavy computations
     rng = np.random.default_rng(0)
     X = pd.DataFrame(rng.normal(size=(20, 6)), columns=[f"f{i}" for i in range(6)])
-    X["target"] = rng.integers(0, 2, size=len(X))
+    y = pd.Series(rng.integers(0, 2, size=len(X)), name="label")
 
     return FeatureSelectionPipeline(
-        data=X,
+        X=X,
+        y=y,
         fs_methods=[
             "f_statistic_selector",
             "variance_selector",
@@ -54,10 +55,11 @@ def test_calculate_means_and_extract_repeat_metrics():
 
 def test_invalid_task_raises():
     X = pd.DataFrame(np.random.randn(10, 3), columns=["a", "b", "c"])
-    X["target"] = np.random.randint(0, 2, size=10)
+    y = pd.Series(np.random.randint(0, 2, size=10), name="label")
     try:
         FeatureSelectionPipeline(
-            data=X,
+            X=X,
+            y=y,
             fs_methods=["f_statistic_selector", "variance_selector"],
             merging_strategy="borda_merger",
             num_repeats=1,
@@ -67,3 +69,23 @@ def test_invalid_task_raises():
         assert False, "Expected ValueError for invalid task"
     except ValueError as e:
         assert "Task must be either" in str(e)
+
+
+def test_data_argument_uses_last_column():
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3],
+            "b": [4, 5, 6],
+            "target_name": [0, 1, 0],
+        }
+    )
+    pipeline = FeatureSelectionPipeline(
+        data=df,
+        fs_methods=["f_statistic_selector", "variance_selector"],
+        merging_strategy="borda_merger",
+        num_repeats=1,
+        num_features_to_select=2,
+        task="classification",
+    )
+    assert pipeline.target_name == "target_name"
+    assert list(pipeline.data.columns)[-1] == "target_name"

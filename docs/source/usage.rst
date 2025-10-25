@@ -13,18 +13,23 @@ Getting Started
 
     from moosefs import FeatureSelectionPipeline
 
-    # data is a pandas.DataFrame with a 'target' column
+    # Either pass a single DataFrame (last column = target) or `X` and `y`.
+    # Assume `data` is a pandas DataFrame whose last column "label" stores the target.
+    X = data.drop(columns=["label"])
+    y = data["label"]
     fs_methods = ["f_statistic_selector", "random_forest_selector", "svm_selector"]
     merging_strategy = "union_of_intersections_merger"
 
     pipeline = FeatureSelectionPipeline(
-        data=data,
+        X=X,
+        y=y,
         fs_methods=fs_methods,
         merging_strategy=merging_strategy,
         num_repeats=5,
         task="classification",
         num_features_to_select=10,
     )
+    # The shorthand `FeatureSelectionPipeline(data=data, ...)` also works.
     best, repeat, group = pipeline.run()
     print(best)
 
@@ -47,4 +52,3 @@ Custom selectors can subclass ``FeatureSelector`` and implement ``compute_scores
         def compute_scores(self, X, y):
             # return a 1D numpy array of per‑feature scores
             return np.random.rand(X.shape[1])
-

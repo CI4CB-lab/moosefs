@@ -12,7 +12,7 @@ def pipeline_instance(request):
     feature_names = [f"Feature_{i + 1}" for i in range(num_features)]
     target_values = np.random.randint(0, 4, size=num_samples)
     data = pd.DataFrame(np.random.randn(num_samples, num_features), columns=feature_names)
-    data["target"] = target_values
+    data["label"] = target_values
 
     fs_methods = [
         "f_statistic_selector",
@@ -71,7 +71,7 @@ def test_pipeline_with_varied_metrics(merging_strategy, metrics):
     feature_names = [f"Feature_{i + 1}" for i in range(num_features)]
     target_values = np.random.randint(0, 4, size=num_samples)
     data = pd.DataFrame(np.random.randn(num_samples, num_features), columns=feature_names)
-    data["target"] = target_values
+    data["label"] = target_values
 
     fs_methods = [
         "f_statistic_selector",
@@ -117,7 +117,7 @@ def test_pipeline_requires_num_features(merging_strategy):
     feature_names = [f"Feature_{i + 1}" for i in range(num_features)]
     target_values = np.random.randint(0, 4, size=num_samples)
     data = pd.DataFrame(np.random.randn(num_samples, num_features), columns=feature_names)
-    data["target"] = target_values
+    data["label"] = target_values
 
     fs_methods = [
         "f_statistic_selector",

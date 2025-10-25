@@ -60,17 +60,22 @@ The core of MOOSE-FS is the `FeatureSelectionPipeline`, which provides a fully c
 #### Example Usage
 
 ```python
+# `data` can be a single DataFrame (last column = target)
+# or you can pass `X` and `y` separately.
+# Assume `data` is a pandas DataFrame whose last column "label" holds the targets.
 from moosefs import FeatureSelectionPipeline
 
 fs_methods = ["f_statistic_selector", "random_forest_selector", "svm_selector"]
 merging_strategy = "union_of_intersections_merger"
+
 pipeline = FeatureSelectionPipeline(
-    data=data,
+    X=data.drop(columns=["label"]),
+    y=data["label"],
     fs_methods=fs_methods,
     merging_strategy=merging_strategy,
     num_repeats=5,
     task="classification",
-    num_features_to_select=10
+    num_features_to_select=10,
 )
 results = pipeline.run()
 ```
