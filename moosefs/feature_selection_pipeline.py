@@ -385,22 +385,32 @@ class FeatureSelectionPipeline:
         self._set_seed(self._per_repeat_seed(idx))
         num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
+        feature_train = train_data.drop(columns=[self.target_name])
+        feature_test = test_data.drop(columns=[self.target_name])
+        column_positions = {column: idx for idx, column in enumerate(feature_train.columns)}
 
         for group in self.subgroup_names:
             key = (idx, group)
             if key not in merged_features_local:
                 continue
 
-            # order selected features to ensure consistency (decision tree)
-            selected_feats = [c for c in train_data.columns if c in merged_features_local[key]]
-            # selected_feats = list(merged_features_local[key])
+            merged_feature_names = merged_features_local[key]
+            ordered_features = [feature for feature in merged_feature_names if feature in column_positions]
+            ordered_features.sort(key=column_positions.__getitem__)
+            if not ordered_features:
+                continue
 
-            X_train_subset = train_data[selected_feats]
+            X_train_subset = feature_train[ordered_features]
             y_train = train_data[self.target_name]
-            X_test_subset = test_data[selected_feats]
+            X_test_subset = feature_test[ordered_features]
             y_test = test_data[self.target_name]
 
-            metric_vals = self._compute_performance_metrics(X_train_subset, y_train, X_test_subset, y_test)
+            metric_vals = self._compute_performance_metrics(
+                X_train_subset,
+                y_train,
+                X_test_subset,
+                y_test,
+            )
             for m_idx, val in enumerate(metric_vals):
                 local_result_dicts[m_idx][key] = val
 
@@ -408,7 +418,7 @@ class FeatureSelectionPipeline:
             stability = compute_stability_metrics(fs_lists) if fs_lists else 0
 
             if agreement_flag:
-                agreement = diversity_agreement(fs_lists, selected_feats, alpha=0.5) if fs_lists else 0
+                agreement = diversity_agreement(fs_lists, ordered_features, alpha=0.5) if fs_lists else 0
                 local_result_dicts[len(metric_vals)][key] = agreement
                 local_result_dicts[len(metric_vals) + 1][key] = stability
             else:
