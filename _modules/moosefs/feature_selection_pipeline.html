@@ -103,7 +103,10 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">X</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fs_methods</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
         <span class="n">merging_strategy</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">num_repeats</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -118,7 +121,9 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the pipeline.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            data: DataFrame including a &#39;target&#39; column.</span>
+<span class="sd">            data: Combined DataFrame where the last column is treated as the target.</span>
+<span class="sd">            X: Feature DataFrame (use together with ``y`` instead of ``data``).</span>
+<span class="sd">            y: Target Series aligned with ``X``.</span>
 <span class="sd">            fs_methods: Feature selectors (identifiers or instances).</span>
 <span class="sd">            merging_strategy: Merging strategy (identifier or instance).</span>
 <span class="sd">            num_repeats: Number of repeats for the pipeline.</span>
@@ -132,11 +137,16 @@
 
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If task is invalid or required parameters are missing.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Exactly one of ``data`` or the pair ``(X, y)`` must be provided.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># parameters validation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_X_y</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span> <span class="o">=</span> <span class="n">num_repeats</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span> <span class="o">=</span> <span class="n">num_features_to_select</span>
@@ -186,6 +196,38 @@
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
         <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PYTHONHASHSEED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._validate_X_y">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._validate_X_y">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_X_y</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize user inputs into a feature DataFrame and target Series.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Provide either `data` or (`X`, `y`), not both.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;`data` must be a pandas DataFrame.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`data` must contain at least one column.&quot;</span><span class="p">)</span>
+            <span class="n">X_df</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">y_ser</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">X</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Provide either `data` or both `X` and `y`.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;`X` must be a pandas DataFrame.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;`y` must be a pandas Series.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`X` and `y` must have the same number of rows.&quot;</span><span class="p">)</span>
+            <span class="n">X_df</span> <span class="o">=</span> <span class="n">X</span>
+            <span class="n">y_ser</span> <span class="o">=</span> <span class="n">y</span>
+
+        <span class="n">target_name</span> <span class="o">=</span> <span class="n">y_ser</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">y_ser</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;target&quot;</span>
+        <span class="k">if</span> <span class="n">target_name</span> <span class="ow">in</span> <span class="n">X_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target column name &#39;</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">&#39; conflicts with feature columns.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">X_df</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">y_ser</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._per_repeat_seed">
@@ -330,8 +372,17 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._split_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_split_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Split data into train/test using stratification when classification.&quot;&quot;&quot;</span>
-        <span class="n">stratify</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;classification&quot;</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">train_test_split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="n">test_size</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">stratify</span><span class="p">)</span></div>
+        <span class="n">stratify</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;classification&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span>
+            <span class="n">test_size</span><span class="o">=</span><span class="n">test_size</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
+            <span class="n">stratify</span><span class="o">=</span><span class="n">stratify</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">train_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">test_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._compute_subset">
@@ -339,8 +390,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_subset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute selected Feature objects per method for this repeat.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
-        <span class="n">X_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">y_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">]</span>
+        <span class="n">X_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span>
+        <span class="n">y_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
         <span class="n">feature_names</span> <span class="o">=</span> <span class="n">X_train</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 
         <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="p">{}</span>
@@ -478,11 +529,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
         <span class="n">num_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">()</span>
         <span class="n">local_result_dicts</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_metrics</span><span class="p">)]</span>
-
-        <span class="n">feature_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
-        <span class="n">feature_test</span> <span class="o">=</span> <span class="n">test_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
-        <span class="n">y_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">]</span>
-        <span class="n">y_test</span> <span class="o">=</span> <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">]</span>
+        <span class="n">feature_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">)</span>
+        <span class="n">feature_test</span> <span class="o">=</span> <span class="n">test_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">)</span>
+        <span class="n">y_train_full</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
+        <span class="n">y_test_full</span> <span class="o">=</span> <span class="n">test_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
         <span class="n">column_positions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">position</span> <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_train</span><span class="o">.</span><span class="n">columns</span><span class="p">)}</span>
 
         <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">:</span>
@@ -493,11 +543,18 @@
             <span class="n">merged_feature_names</span> <span class="o">=</span> <span class="n">merged_features_local</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
             <span class="n">ordered_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">feature</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">merged_feature_names</span> <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">column_positions</span><span class="p">]</span>
             <span class="n">ordered_features</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">column_positions</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ordered_features</span><span class="p">:</span>
+                <span class="k">continue</span>
 
             <span class="n">X_train_subset</span> <span class="o">=</span> <span class="n">feature_train</span><span class="p">[</span><span class="n">ordered_features</span><span class="p">]</span>
             <span class="n">X_test_subset</span> <span class="o">=</span> <span class="n">feature_test</span><span class="p">[</span><span class="n">ordered_features</span><span class="p">]</span>
 
-            <span class="n">metric_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_performance_metrics</span><span class="p">(</span><span class="n">X_train_subset</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test_subset</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
+            <span class="n">metric_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_performance_metrics</span><span class="p">(</span>
+                <span class="n">X_train_subset</span><span class="p">,</span>
+                <span class="n">y_train_full</span><span class="p">,</span>
+                <span class="n">X_test_subset</span><span class="p">,</span>
+                <span class="n">y_test_full</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="k">for</span> <span class="n">m_idx</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">):</span>
                 <span class="n">local_result_dicts</span><span class="p">[</span><span class="n">m_idx</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
 
