@@ -84,6 +84,7 @@ include = [
 required-version = "0.14.2"
 line-length = 120
 target-version = "py39"
+fix = true 
 exclude = [
     ".git",
     ".venv",

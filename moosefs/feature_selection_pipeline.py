@@ -218,8 +218,7 @@ class FeatureSelectionPipeline:
             self.fs_subsets.update(partial_fs_subsets)
             self.merged_features.update(partial_merged_features)
             for dict_idx in range(num_metrics):
-                for key in sorted(partial_result_dicts[dict_idx].keys()):
-                    result_dicts[dict_idx][key] = partial_result_dicts[dict_idx][key]
+                result_dicts[dict_idx].update(partial_result_dicts[dict_idx])
 
         # Compute Pareto analysis as usual
         means_list = self._calculate_means(result_dicts, self.subgroup_names)
@@ -360,7 +359,30 @@ class FeatureSelectionPipeline:
             Averaged metric values per configured metric.
         """
         self._set_seed(self.random_state)
-        return [metric.compute(X_train, y_train, X_test, y_test) for metric in self.metrics]
+        if not self.metrics:
+            return []
+
+        shared_results: dict = {}
+        metric_values: list = []
+
+        for metric in self.metrics:
+            aggregator = getattr(metric, "aggregate_from_results", None)
+            if not callable(aggregator):
+                metric_values.append(metric.compute(X_train, y_train, X_test, y_test))
+                continue
+
+            signature_fn = getattr(metric, "model_signature", None)
+            cache_key = signature_fn() if callable(signature_fn) else None
+            results = shared_results.get(cache_key) if cache_key is not None else None
+
+            if results is None:
+                results = metric.train_and_predict(X_train, y_train, X_test, y_test)
+                if cache_key is not None:
+                    shared_results[cache_key] = results
+
+            metric_values.append(aggregator(y_test, results))
+
+        return metric_values
 
     def _compute_metrics(
         self,
@@ -388,6 +410,12 @@ class FeatureSelectionPipeline:
         feature_train = train_data.drop(columns=[self.target_name])
         feature_test = test_data.drop(columns=[self.target_name])
         column_positions = {column: idx for idx, column in enumerate(feature_train.columns)}
+
+        feature_train = train_data.drop(columns="target")
+        feature_test = test_data.drop(columns="target")
+        y_train = train_data["target"]
+        y_test = test_data["target"]
+        column_positions = {name: position for position, name in enumerate(feature_train.columns)}
 
         for group in self.subgroup_names:
             key = (idx, group)
