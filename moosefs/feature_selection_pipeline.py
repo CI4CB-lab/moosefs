@@ -407,14 +407,10 @@ class FeatureSelectionPipeline:
         self._set_seed(self._per_repeat_seed(idx))
         num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
-        feature_train = train_data.drop(columns=[self.target_name])
-        feature_test = test_data.drop(columns=[self.target_name])
-        column_positions = {column: idx for idx, column in enumerate(feature_train.columns)}
-
-        feature_train = train_data.drop(columns="target")
-        feature_test = test_data.drop(columns="target")
-        y_train = train_data["target"]
-        y_test = test_data["target"]
+        feature_train = train_data.drop(columns=self.target_name)
+        feature_test = test_data.drop(columns=self.target_name)
+        y_train_full = train_data[self.target_name]
+        y_test_full = test_data[self.target_name]
         column_positions = {name: position for position, name in enumerate(feature_train.columns)}
 
         for group in self.subgroup_names:
@@ -429,15 +425,13 @@ class FeatureSelectionPipeline:
                 continue
 
             X_train_subset = feature_train[ordered_features]
-            y_train = train_data[self.target_name]
             X_test_subset = feature_test[ordered_features]
-            y_test = test_data[self.target_name]
 
             metric_vals = self._compute_performance_metrics(
                 X_train_subset,
-                y_train,
+                y_train_full,
                 X_test_subset,
-                y_test,
+                y_test_full,
             )
             for m_idx, val in enumerate(metric_vals):
                 local_result_dicts[m_idx][key] = val
