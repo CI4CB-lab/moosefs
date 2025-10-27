@@ -13,8 +13,8 @@ def pipeline_instance():
     feature_names = [f"Feature_{i + 1}" for i in range(num_features)]
     target_values = np.random.randint(0, 4, size=num_samples)
 
-    data = pd.DataFrame(np.random.randn(num_samples, num_features), columns=feature_names)
-    data["target"] = target_values
+    X = pd.DataFrame(np.random.randn(num_samples, num_features), columns=feature_names)
+    y = pd.Series(target_values, name="class")
 
     # Define parameters
     fs_methods = [
@@ -31,7 +31,8 @@ def pipeline_instance():
     num_features_to_select = 300
     n_jobs = 1
     pipeline = FeatureSelectionPipeline(
-        data=data,
+        X=X,
+        y=y,
         fs_methods=fs_methods,
         merging_strategy=merging_strategy,
         num_repeats=num_repeats,

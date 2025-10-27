@@ -53,7 +53,7 @@ docs = [
 # Developer tools: includes test and docs deps plus tooling
 dev = [
     # Lint/format
-    "ruff==0.13.2",
+    "ruff>=0.14.2",
     # Build and publish tooling
     "build>=1",
     "twine>=5",
@@ -81,7 +81,7 @@ include = [
 
 # Ruff configuration for linting, formatting, and import sorting
 [tool.ruff]
-required-version = "0.13.2"
+required-version = "0.14.2"
 line-length = 120
 target-version = "py39"
 fix = true 
@@ -107,3 +107,8 @@ ignore = ["E501"]
 known-first-party = ["moosefs"]
 combine-as-imports = true
 force-sort-within-sections = true
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.2",
+]

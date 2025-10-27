@@ -26,7 +26,10 @@ class FeatureSelectionPipeline:
 
     def __init__(
         self,
-        data: pd.DataFrame,
+        data: Optional[pd.DataFrame] = None,
+        *,
+        X: Optional[pd.DataFrame] = None,
+        y: Optional[pd.Series] = None,
         fs_methods: list,
         merging_strategy: Any,
         num_repeats: int,
@@ -41,7 +44,9 @@ class FeatureSelectionPipeline:
         """Initialize the pipeline.
 
         Args:
-            data: DataFrame including a 'target' column.
+            data: Combined DataFrame where the last column is treated as the target.
+            X: Feature DataFrame (use together with ``y`` instead of ``data``).
+            y: Target Series aligned with ``X``.
             fs_methods: Feature selectors (identifiers or instances).
             merging_strategy: Merging strategy (identifier or instance).
             num_repeats: Number of repeats for the pipeline.
@@ -55,11 +60,16 @@ class FeatureSelectionPipeline:
 
         Raises:
             ValueError: If task is invalid or required parameters are missing.
+
+        Note:
+            Exactly one of ``data`` or the pair ``(X, y)`` must be provided.
         """
 
         # parameters validation
         self._validate_task(task)
-        self.data = data
+        self.X, self.y = self._validate_X_y(data=data, X=X, y=y)
+        self.target_name = self.y.name
+        self.data = pd.concat([self.X, self.y], axis=1)
         self.task = task
         self.num_repeats = num_repeats
         self.num_features_to_select = num_features_to_select
@@ -103,6 +113,35 @@ class FeatureSelectionPipeline:
         np.random.seed(seed)
         random.seed(seed)
         os.environ["PYTHONHASHSEED"] = str(seed)
+
+    @staticmethod
+    def _validate_X_y(*, data=None, X=None, y=None):
+        """Normalize user inputs into a feature DataFrame and target Series."""
+        if data is not None:
+            if X is not None or y is not None:
+                raise ValueError("Provide either `data` or (`X`, `y`), not both.")
+            if not isinstance(data, pd.DataFrame):
+                raise TypeError("`data` must be a pandas DataFrame.")
+            if data.shape[1] < 1:
+                raise ValueError("`data` must contain at least one column.")
+            X_df = data.iloc[:, :-1]
+            y_ser = data.iloc[:, -1]
+        else:
+            if X is None or y is None:
+                raise ValueError("Provide either `data` or both `X` and `y`.")
+            if not isinstance(X, pd.DataFrame):
+                raise TypeError("`X` must be a pandas DataFrame.")
+            if not isinstance(y, pd.Series):
+                raise TypeError("`y` must be a pandas Series.")
+            if len(X) != len(y):
+                raise ValueError("`X` and `y` must have the same number of rows.")
+            X_df = X
+            y_ser = y
+
+        target_name = y_ser.name if y_ser.name is not None else "target"
+        if target_name in X_df.columns:
+            raise ValueError(f"Target column name '{target_name}' conflicts with feature columns.")
+        return X_df.copy(), y_ser.rename(target_name).copy()
 
     def _per_repeat_seed(self, idx: int) -> int:
         """Derive a per-repeat seed from the top-level seed."""
@@ -226,14 +265,23 @@ class FeatureSelectionPipeline:
 
     def _split_data(self, test_size: float, random_state: int) -> tuple:
         """Split data into train/test using stratification when classification."""
-        stratify = self.data["target"] if self.task == "classification" else None
-        return train_test_split(self.data, test_size=test_size, random_state=random_state, stratify=stratify)
+        stratify = self.y if self.task == "classification" else None
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.X,
+            self.y,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=stratify,
+        )
+        train_df = pd.concat([X_train, y_train], axis=1)
+        test_df = pd.concat([X_test, y_test], axis=1)
+        return train_df, test_df
 
     def _compute_subset(self, train_data: pd.DataFrame, idx: int) -> dict:
         """Compute selected Feature objects per method for this repeat."""
         self._set_seed(self._per_repeat_seed(idx))
-        X_train = train_data.drop("target", axis=1)
-        y_train = train_data["target"]
+        X_train = train_data.drop(columns=[self.target_name])
+        y_train = train_data[self.target_name]
         feature_names = X_train.columns.tolist()
 
         fs_subsets_local = {}
@@ -359,11 +407,10 @@ class FeatureSelectionPipeline:
         self._set_seed(self._per_repeat_seed(idx))
         num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
-
-        feature_train = train_data.drop(columns="target")
-        feature_test = test_data.drop(columns="target")
-        y_train = train_data["target"]
-        y_test = test_data["target"]
+        feature_train = train_data.drop(columns=self.target_name)
+        feature_test = test_data.drop(columns=self.target_name)
+        y_train_full = train_data[self.target_name]
+        y_test_full = test_data[self.target_name]
         column_positions = {name: position for position, name in enumerate(feature_train.columns)}
 
         for group in self.subgroup_names:
@@ -374,11 +421,18 @@ class FeatureSelectionPipeline:
             merged_feature_names = merged_features_local[key]
             ordered_features = [feature for feature in merged_feature_names if feature in column_positions]
             ordered_features.sort(key=column_positions.__getitem__)
+            if not ordered_features:
+                continue
 
             X_train_subset = feature_train[ordered_features]
             X_test_subset = feature_test[ordered_features]
 
-            metric_vals = self._compute_performance_metrics(X_train_subset, y_train, X_test_subset, y_test)
+            metric_vals = self._compute_performance_metrics(
+                X_train_subset,
+                y_train_full,
+                X_test_subset,
+                y_test_full,
+            )
             for m_idx, val in enumerate(metric_vals):
                 local_result_dicts[m_idx][key] = val
 
