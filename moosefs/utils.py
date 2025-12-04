@@ -94,6 +94,10 @@ class_path_mapping: dict = {
         "moosefs.merging_strategies.consensus_merger.ConsensusMerger",
         ["k", "fill"],
     ),
+    "frequency_bootstrap_merger": (
+        "moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger",
+        [],
+    ),
 }
 
 

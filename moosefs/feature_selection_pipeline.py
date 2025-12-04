@@ -152,6 +152,12 @@ class FeatureSelectionPipeline:
         n = self.n_jobs if self.n_jobs is not None and self.n_jobs != -1 else self.num_repeats
         return min(int(n), int(self.num_repeats))
 
+    def _merging_requires_bootstrap(self) -> bool:
+        """Return True when the chosen merger asks for bootstrap statistics."""
+        needs_bootstrap = getattr(self.merging_strategy, "needs_bootstrap_merging", False)
+        num_bootstrap = getattr(self.merging_strategy, "num_bootstrap", 0)
+        return bool(needs_bootstrap and num_bootstrap and num_bootstrap > 0)
+
     def _generate_subgroup_names(self, min_group_size: int) -> list:
         """Generate all selector-name combinations with minimum size.
 
@@ -239,7 +245,17 @@ class FeatureSelectionPipeline:
         train_data, test_data = self._split_data(test_size=0.20, random_state=self._per_repeat_seed(i))
 
         fs_subsets_local = self._compute_subset(train_data, i)
-        merged_features_local = self._compute_merging(fs_subsets_local, i, verbose)
+        feature_names = train_data.drop(columns=[self.target_name]).columns.tolist()
+        bootstrap_stats = (
+            self._compute_bootstrap_stats(train_data, i, feature_names) if self._merging_requires_bootstrap() else None
+        )
+        merged_features_local = self._compute_merging(
+            fs_subsets_local,
+            i,
+            verbose,
+            bootstrap_stats=bootstrap_stats,
+            feature_names=feature_names,
+        )
         local_result_dicts = self._compute_metrics(fs_subsets_local, merged_features_local, train_data, test_data, i)
 
         # Return repeat index as the first element
@@ -277,6 +293,58 @@ class FeatureSelectionPipeline:
         test_df = pd.concat([X_test, y_test], axis=1)
         return train_df, test_df
 
+    def _compute_bootstrap_stats(self, train_data: pd.DataFrame, idx: int, feature_names: list) -> dict:
+        """Collect selection counts across bootstrap resamples for each selector."""
+        self._set_seed(self._per_repeat_seed(idx))
+
+        num_bootstrap = int(getattr(self.merging_strategy, "num_bootstrap", 0) or 0)
+        if num_bootstrap <= 0:
+            return {}
+
+        use_scores = bool(getattr(self.merging_strategy, "use_scores", False))
+
+        X_train = train_data.drop(columns=[self.target_name])
+        y_train = train_data[self.target_name]
+
+        n_rows = len(train_data)
+        stats: dict = {}
+        rng = np.random.default_rng(self._per_repeat_seed(idx))
+
+        for fs_method in self.fs_methods:
+            counts = np.zeros(len(feature_names), dtype=np.int32)
+            score_sums = np.zeros(len(feature_names), dtype=np.float32)
+
+            for b in range(num_bootstrap):
+                sample_idx = rng.integers(0, n_rows, size=n_rows)
+                X_boot = X_train.iloc[sample_idx]
+                y_boot = y_train.iloc[sample_idx]
+
+                scores, indices = fs_method.select_features(X_boot, y_boot)
+                if indices is None:
+                    continue
+
+                sel_idx = np.asarray(indices, dtype=int)
+                if sel_idx.size == 0:
+                    continue
+
+                counts[sel_idx] += 1
+
+                if use_scores and scores is not None:
+                    score_arr = np.asarray(scores, dtype=np.float32)
+                    min_v = float(score_arr.min())
+                    rng_v = float(score_arr.max() - min_v) or 1.0
+                    norm_scores = (score_arr - min_v) / rng_v
+                    score_sums[sel_idx] += norm_scores[sel_idx]
+
+            stats[fs_method.name] = {
+                "counts": counts,
+                "score_sums": score_sums,
+                "n_runs": num_bootstrap,
+            }
+
+        stats["_feature_names"] = feature_names
+        return stats
+
     def _compute_subset(self, train_data: pd.DataFrame, idx: int) -> dict:
         """Compute selected Feature objects per method for this repeat."""
         self._set_seed(self._per_repeat_seed(idx))
@@ -304,12 +372,20 @@ class FeatureSelectionPipeline:
         fs_subsets_local: dict,
         idx: int,
         verbose: bool = True,
+        bootstrap_stats: Optional[dict] = None,
+        feature_names: Optional[list] = None,
     ) -> dict:
         """Merge per-group features and return mapping for this repeat."""
         self._set_seed(self._per_repeat_seed(idx))
         merged_features_local = {}
         for group in self.subgroup_names:
-            merged = self._merge_group_features(fs_subsets_local, idx, group)
+            merged = self._merge_group_features(
+                fs_subsets_local,
+                idx,
+                group,
+                bootstrap_stats=bootstrap_stats,
+                feature_names=feature_names,
+            )
             if merged:
                 merged_features_local[(idx, group)] = merged
             elif verbose:
@@ -321,6 +397,9 @@ class FeatureSelectionPipeline:
         fs_subsets_local: dict,
         idx: int,
         group: tuple,
+        *,
+        bootstrap_stats: Optional[dict] = None,
+        feature_names: Optional[list] = None,
     ) -> list:
         """Merge features for a specific group of methods.
 
@@ -332,6 +411,17 @@ class FeatureSelectionPipeline:
             Merged features (type depends on strategy).
         """
         group_features = [[f for f in fs_subsets_local[(idx, method)] if f.selected] for method in group]
+
+        if bootstrap_stats and self._merging_requires_bootstrap():
+            feature_names = feature_names or bootstrap_stats.get("_feature_names")
+            return self.merging_strategy.merge(
+                group_features,
+                self.num_features_to_select,
+                fill=self.fill,
+                group=group,
+                feature_names=feature_names,
+                bootstrap_stats=bootstrap_stats,
+            )
 
         # Determine set-based vs rank-based via method call when available
         is_set_based_attr = getattr(self.merging_strategy, "is_set_based", None)
