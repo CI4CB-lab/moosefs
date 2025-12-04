@@ -40,6 +40,10 @@ class FeatureSelectionPipeline:
         fill: bool = False,
         random_state: Optional[int] = None,
         n_jobs: Optional[int] = None,
+        bootstrap: bool = False,
+        bootstrap_num_samples: int = 20,
+        bootstrap_min_freq: float = 0.6,
+        bootstrap_use_scores: bool = True,
     ) -> None:
         """Initialize the pipeline.
 
@@ -57,6 +61,10 @@ class FeatureSelectionPipeline:
             fill: If True, enforce exact size after merging.
             random_state: Seed for reproducibility.
             n_jobs: Parallel jobs (use num_repeats when -1 or None).
+            bootstrap: If True, apply bootstrap-based aggregation before merging.
+            bootstrap_num_samples: Number of bootstrap draws per repeat when ``bootstrap`` is True.
+            bootstrap_min_freq: Minimum selection frequency to keep a feature under bootstrap.
+            bootstrap_use_scores: If True, average normalized scores across bootstraps (rank mergers).
 
         Raises:
             ValueError: If task is invalid or required parameters are missing.
@@ -77,6 +85,10 @@ class FeatureSelectionPipeline:
         self.n_jobs = n_jobs
         self.min_group_size = min_group_size
         self.fill = fill
+        self.bootstrap = bootstrap
+        self.bootstrap_num_samples = int(bootstrap_num_samples)
+        self.bootstrap_min_freq = float(bootstrap_min_freq)
+        self.bootstrap_use_scores = bool(bootstrap_use_scores)
 
         # set seed for reproducibility
         self._set_seed(self.random_state)
@@ -157,6 +169,12 @@ class FeatureSelectionPipeline:
         needs_bootstrap = getattr(self.merging_strategy, "needs_bootstrap_merging", False)
         num_bootstrap = getattr(self.merging_strategy, "num_bootstrap", 0)
         return bool(needs_bootstrap and num_bootstrap and num_bootstrap > 0)
+
+    def _should_collect_bootstrap(self) -> bool:
+        """Return True if bootstrap stats should be gathered."""
+        if self._merging_requires_bootstrap():
+            return True
+        return bool(self.bootstrap and self.bootstrap_num_samples > 0)
 
     def _generate_subgroup_names(self, min_group_size: int) -> list:
         """Generate all selector-name combinations with minimum size.
@@ -247,7 +265,7 @@ class FeatureSelectionPipeline:
         fs_subsets_local = self._compute_subset(train_data, i)
         feature_names = train_data.drop(columns=[self.target_name]).columns.tolist()
         bootstrap_stats = (
-            self._compute_bootstrap_stats(train_data, i, feature_names) if self._merging_requires_bootstrap() else None
+            self._compute_bootstrap_stats(train_data, i, feature_names) if self._should_collect_bootstrap() else None
         )
         merged_features_local = self._compute_merging(
             fs_subsets_local,
@@ -297,11 +315,13 @@ class FeatureSelectionPipeline:
         """Collect selection counts across bootstrap resamples for each selector."""
         self._set_seed(self._per_repeat_seed(idx))
 
-        num_bootstrap = int(getattr(self.merging_strategy, "num_bootstrap", 0) or 0)
+        num_bootstrap = int(
+            getattr(self.merging_strategy, "num_bootstrap", 0) or (self.bootstrap_num_samples if self.bootstrap else 0)
+        )
         if num_bootstrap <= 0:
             return {}
 
-        use_scores = bool(getattr(self.merging_strategy, "use_scores", False))
+        use_scores = bool(getattr(self.merging_strategy, "use_scores", self.bootstrap_use_scores))
 
         X_train = train_data.drop(columns=[self.target_name])
         y_train = train_data[self.target_name]
@@ -344,6 +364,72 @@ class FeatureSelectionPipeline:
 
         stats["_feature_names"] = feature_names
         return stats
+
+    def _build_bootstrap_subsets(self, group: tuple, feature_names: list, bootstrap_stats: dict) -> Optional[list]:
+        """Construct per-method Feature lists using bootstrap selection frequencies."""
+        if not feature_names or not bootstrap_stats:
+            return None
+
+        n_features = len(feature_names)
+        freq_accum = np.zeros(n_features, dtype=np.float32)
+        per_method_freq = {}
+        per_method_scores = {}
+        num_methods = 0
+
+        for method_name in group:
+            stats = bootstrap_stats.get(method_name)
+            if not stats:
+                continue
+            n_runs = stats.get("n_runs", 0)
+            if n_runs <= 0:
+                continue
+            counts = np.asarray(stats.get("counts", []), dtype=np.float32)
+            if counts.shape[0] != n_features:
+                continue
+            freq = counts / float(n_runs)
+            per_method_freq[method_name] = freq
+            freq_accum += freq
+            num_methods += 1
+
+            if self.bootstrap_use_scores:
+                score_sums = np.asarray(stats.get("score_sums", []), dtype=np.float32)
+                avg_scores = np.divide(
+                    score_sums,
+                    counts,
+                    out=np.zeros_like(score_sums),
+                    where=counts > 0,
+                )
+            else:
+                avg_scores = np.zeros_like(freq)
+            per_method_scores[method_name] = avg_scores
+
+        if num_methods == 0:
+            return None
+
+        global_freq = freq_accum / float(num_methods)
+        survivor_idx = [i for i, f in enumerate(global_freq) if f >= self.bootstrap_min_freq]
+
+        # If nothing meets the threshold but fill=True, keep the top-k by frequency.
+        if not survivor_idx and self.fill and self.num_features_to_select:
+            top_idx = np.argsort(-global_freq, kind="stable")[: self.num_features_to_select]
+            survivor_idx = [int(i) for i in top_idx]
+
+        if not survivor_idx:
+            return None
+
+        subsets = []
+        for method_name in group:
+            freq = per_method_freq.get(method_name)
+            scores = per_method_scores.get(method_name, np.zeros(n_features, dtype=np.float32))
+            if freq is None:
+                # Method missing stats; skip it to avoid inconsistent lengths.
+                continue
+            features = [Feature(name=feature_names[i], score=float(scores[i]), selected=True) for i in survivor_idx]
+            subsets.append(features)
+
+        if not subsets:
+            return None
+        return subsets
 
     def _compute_subset(self, train_data: pd.DataFrame, idx: int) -> dict:
         """Compute selected Feature objects per method for this repeat."""
@@ -412,6 +498,7 @@ class FeatureSelectionPipeline:
         """
         group_features = [[f for f in fs_subsets_local[(idx, method)] if f.selected] for method in group]
 
+        # Strategy-provided bootstrap handling (e.g., FrequencyBootstrapMerger)
         if bootstrap_stats and self._merging_requires_bootstrap():
             feature_names = feature_names or bootstrap_stats.get("_feature_names")
             return self.merging_strategy.merge(
@@ -422,6 +509,17 @@ class FeatureSelectionPipeline:
                 feature_names=feature_names,
                 bootstrap_stats=bootstrap_stats,
             )
+
+        # Pipeline-level bootstrap pre-processing for any merger
+        if bootstrap_stats and self.bootstrap:
+            preprocessed = self._build_bootstrap_subsets(group, feature_names, bootstrap_stats)
+            if preprocessed is not None:
+                subsets = preprocessed
+                is_set_based_attr = getattr(self.merging_strategy, "is_set_based", None)
+                is_set_based = bool(is_set_based_attr()) if callable(is_set_based_attr) else bool(is_set_based_attr)
+                if is_set_based:
+                    return self.merging_strategy.merge(subsets, self.num_features_to_select, fill=self.fill)
+                return self.merging_strategy.merge(subsets, self.num_features_to_select)
 
         # Determine set-based vs rank-based via method call when available
         is_set_based_attr = getattr(self.merging_strategy, "is_set_based", None)
