@@ -77,3 +77,27 @@ def test_bootstrap_prefilter_rank_based_merger():
 
     merged, _, _ = pipeline.run(verbose=False)
     assert merged == ["f0"]
+
+
+def test_bootstrap_fill_backfills_to_requested_size():
+    data = _toy_data()
+    sel1 = DummySelector("s1", indices=[0], scores=[1.0])
+    sel2 = DummySelector("s2", indices=[0], scores=[0.9])
+
+    pipeline = FeatureSelectionPipeline(
+        data=data,
+        fs_methods=[sel1, sel2],
+        merging_strategy=ConsensusMerger(k=2),
+        num_repeats=1,
+        num_features_to_select=2,
+        metrics=[],
+        task="classification",
+        bootstrap=True,
+        bootstrap_num_samples=3,
+        bootstrap_min_freq=0.9,
+        fill=True,
+    )
+
+    merged, _, _ = pipeline.run(verbose=False)
+    assert set(merged) == {"f0", "f1"}
+    assert len(merged) == 2

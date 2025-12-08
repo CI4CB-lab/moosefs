@@ -156,6 +156,25 @@ def test_frequency_fill_and_score_tiebreak(frequency_merger):
     assert merged == ["a", "b"]
 
 
+def test_frequency_fill_pads_when_under_min_freq():
+    feature_names = ["a", "b", "c"]
+    stats = {
+        "m1": {"counts": [5, 1, 0], "score_sums": [5.0, 1.0, 0.0], "n_runs": 5},
+        "m2": {"counts": [4, 0, 0], "score_sums": [4.0, 0.0, 0.0], "n_runs": 5},
+    }
+    merger = FrequencyBootstrapMerger(num_bootstrap=5, min_freq=0.8, use_scores=False, fill=True)
+    merged = merger.merge(
+        [],
+        num_features_to_select=2,
+        group=("m1", "m2"),
+        feature_names=feature_names,
+        bootstrap_stats=stats,
+        fill=True,
+    )
+    # Only "a" clears the threshold; fill=True should backfill the next-best by frequency.
+    assert merged == ["a", "b"]
+
+
 def test_borda_multiple_scores(borda_merger):
     subsets = [
         [Feature("A", 10), Feature("B", 7), Feature("C", 5)],

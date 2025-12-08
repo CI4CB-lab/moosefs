@@ -110,8 +110,12 @@ class FrequencyBootstrapMerger(MergingStrategy):
         filtered = [name for name, f, _ in candidates if f >= self.min_freq]
         filtered = filtered[:num_features_to_select]
 
-        if filtered or not fill:
+        if not fill:
             return filtered
 
-        # If nothing met the threshold but fill=True, backfill with top-k by frequency.
-        return [name for name, _, _ in candidates[:num_features_to_select]]
+        if len(filtered) >= num_features_to_select:
+            return filtered
+
+        # Backfill with remaining highest-frequency features to reach desired count.
+        extras = [name for name, _, _ in candidates if name not in filtered][: num_features_to_select - len(filtered)]
+        return filtered + extras

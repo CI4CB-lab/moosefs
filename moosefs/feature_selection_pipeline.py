@@ -372,6 +372,7 @@ class FeatureSelectionPipeline:
 
         n_features = len(feature_names)
         freq_accum = np.zeros(n_features, dtype=np.float32)
+        score_accum = np.zeros(n_features, dtype=np.float32)
         per_method_freq = {}
         per_method_scores = {}
         num_methods = 0
@@ -402,17 +403,29 @@ class FeatureSelectionPipeline:
             else:
                 avg_scores = np.zeros_like(freq)
             per_method_scores[method_name] = avg_scores
+            score_accum += avg_scores
 
         if num_methods == 0:
             return None
 
         global_freq = freq_accum / float(num_methods)
-        survivor_idx = [i for i, f in enumerate(global_freq) if f >= self.bootstrap_min_freq]
+        global_scores = score_accum / float(num_methods)
+        ranking = sorted(
+            range(n_features),
+            key=lambda i: (global_freq[i], global_scores[i], -i),
+            reverse=True,
+        )
 
-        # If nothing meets the threshold but fill=True, keep the top-k by frequency.
-        if not survivor_idx and self.fill and self.num_features_to_select:
-            top_idx = np.argsort(-global_freq, kind="stable")[: self.num_features_to_select]
-            survivor_idx = [int(i) for i in top_idx]
+        base_survivors = [i for i, f in enumerate(global_freq) if f >= self.bootstrap_min_freq]
+
+        if self.fill and self.num_features_to_select:
+            max_features = min(self.num_features_to_select, n_features)
+            survivor_idx = [i for i in ranking if i in base_survivors][:max_features]
+            if len(survivor_idx) < max_features:
+                filler_idx = [i for i in ranking if i not in survivor_idx][: max_features - len(survivor_idx)]
+                survivor_idx = survivor_idx + filler_idx
+        else:
+            survivor_idx = base_survivors
 
         if not survivor_idx:
             return None
