@@ -42,11 +42,11 @@ def pipeline_instance(request):
 
 
 def test_feature_selection_pipeline(pipeline_instance):
-    best_features, best_repeat, best_group_name = pipeline_instance()
+    best_features, best_repeat, best_ensemble = pipeline_instance()
 
     assert best_features is not None, "Best features should not be None"
     assert best_repeat is not None, "Best repeat should not be None"
-    assert best_group_name is not None, "Best group name should not be None"
+    assert best_ensemble is not None, "Best ensemble should not be None"
 
     assert all(feature in pipeline_instance.data.columns for feature in best_features), (
         "All best features should exist in the original dataset."
@@ -54,7 +54,7 @@ def test_feature_selection_pipeline(pipeline_instance):
 
     assert 0 <= int(best_repeat) <= pipeline_instance.num_repeats, "Best repeat index must be within the valid range."
 
-    assert best_group_name in pipeline_instance.subgroup_names, "Best group name must be in the defined subgroup names."
+    assert best_ensemble in pipeline_instance.ensembles, "Best ensemble must be in the defined ensembles."
 
 
 @pytest.mark.parametrize(
@@ -97,14 +97,14 @@ def test_pipeline_with_varied_metrics(merging_strategy, metrics):
         random_state=random_state,
         n_jobs=n_jobs,
     )
-    best_features, best_repeat, best_group_name = pipeline()
+    best_features, best_repeat, best_ensemble = pipeline()
 
     assert best_features is not None, "Best features should not be None"
     assert len(best_features) == num_features_to_select, (
         "Fill is set to true, so the number of features should be equal to num_features_to_select."
     )
     assert 0 <= int(best_repeat) <= num_repeats, "Best repeat index must be within valid range."
-    assert best_group_name in pipeline.subgroup_names, "Best group name must be a valid subgroup name."
+    assert best_ensemble in pipeline.ensembles, "Best ensemble must be valid."
 
 
 @pytest.mark.parametrize("merging_strategy", ["union_of_intersections_merger", "borda_merger"])
