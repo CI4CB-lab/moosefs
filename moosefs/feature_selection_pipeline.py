@@ -41,6 +41,7 @@ class FeatureSelectionPipeline:
         bootstrap_min_freq: float = 0.6,
         bootstrap_use_scores: bool = True,
         refit_on_full_data: bool = False,
+        stability_mode: str = "agreement",  # "agreement", "cross_folds", or "both"
     ) -> None:
         """Initialize the pipeline.
 
@@ -88,6 +89,7 @@ class FeatureSelectionPipeline:
         self.bootstrap_min_freq = float(bootstrap_min_freq)
         self.bootstrap_use_scores = bool(bootstrap_use_scores)
         self.refit_on_full_data = refit_on_full_data
+        self.stability_mode = stability_mode
 
         # set seed for reproducibility
         self._set_seed(self.random_state)
@@ -207,6 +209,7 @@ class FeatureSelectionPipeline:
         parallel_results = self._execute_folds(cv_splits, verbose)
         self._collect_fold_results(parallel_results, result_dicts)
 
+        result_dicts = self._inject_cross_fold_stability(result_dicts)
         best_ensemble, best_repeat = self._select_best_ensemble(result_dicts)
         if self.refit_on_full_data:
             merged_full = self._refit_on_full_data(best_ensemble)
@@ -644,7 +647,7 @@ class FeatureSelectionPipeline:
     ):
         """Compute performance and stability metrics for each ensemble."""
         self._set_seed(self._per_repeat_seed(idx))
-        num_metrics = len(self.metrics) + 1  # +1 for stability
+        num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
         feature_train = train_data.drop(columns=self.target_name)
         feature_test = test_data.drop(columns=self.target_name)
@@ -676,9 +679,14 @@ class FeatureSelectionPipeline:
             for m_idx, val in enumerate(metric_vals):
                 local_result_dicts[m_idx][key] = val
 
-            fs_lists = [[f.name for f in fs_subsets_local[(idx, method)] if f.selected] for method in selectors]
-            stability = compute_stability_metrics(fs_lists) if fs_lists else 0
-            local_result_dicts[len(metric_vals)][key] = stability
+            metric_slot = len(metric_vals)
+            if self.stability_mode in ("agreement", "both"):
+                fs_lists = [[f.name for f in fs_subsets_local[(idx, method)] if f.selected] for method in selectors]
+                stability = compute_stability_metrics(fs_lists) if fs_lists else 0
+                local_result_dicts[metric_slot][key] = stability
+                metric_slot += 1
+
+            # cross-fold stability is filled later after all folds are known
 
         return local_result_dicts
 
@@ -697,6 +705,34 @@ class FeatureSelectionPipeline:
                 ensemble_means.append(None if np.isnan(m) else float(m))
             means_list.append(ensemble_means)
         return means_list
+
+    def _inject_cross_fold_stability(self, result_dicts):
+        """Compute stability of merged features across folds for each ensemble."""
+        if self.stability_mode not in ("cross_folds", "both"):
+            return result_dicts
+
+        # Prepare destination dict index
+        dest_idx = len(self.metrics)
+        if self.stability_mode == "both":
+            dest_idx += 1
+
+        stability_dict = result_dicts[dest_idx] if dest_idx < len(result_dicts) else {}
+        for ensemble in self.ensembles:
+            merged_sets = [
+                set(self.merged_features[(fold_idx, ensemble)])
+                for fold_idx in range(self.num_repeats)
+                if (fold_idx, ensemble) in self.merged_features
+            ]
+            if len(merged_sets) < 2:
+                stability_dict[(None, ensemble)] = 0.0
+                continue
+            stability_dict[(None, ensemble)] = compute_stability_metrics([list(s) for s in merged_sets])
+
+        if dest_idx >= len(result_dicts):
+            result_dicts.append(stability_dict)
+        else:
+            result_dicts[dest_idx] = stability_dict
+        return result_dicts
 
     @staticmethod
     def _compute_pareto(values, names):
@@ -754,8 +790,13 @@ class FeatureSelectionPipeline:
             )
 
     def _num_metrics_total(self):
-        """Count performance metrics plus stability."""
-        return len(self.metrics) + 1
+        """Count performance metrics plus configured stability signals."""
+        extra = 0
+        if self.stability_mode in ("agreement", "both"):
+            extra += 1
+        if self.stability_mode in ("cross_folds", "both"):
+            extra += 1
+        return len(self.metrics) + extra
 
     def __str__(self):
         return (
