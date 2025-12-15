@@ -6,7 +6,6 @@ from typing import Any, Optional
 from joblib import Parallel, delayed, parallel_backend
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
 # tqdm is not used; keep imports minimal
 from .core import Feature, ParetoAnalysis
@@ -41,6 +40,7 @@ class FeatureSelectionPipeline:
         bootstrap_num_samples: int = 20,
         bootstrap_min_freq: float = 0.6,
         bootstrap_use_scores: bool = True,
+        refit_on_full_data: bool = False,
     ) -> None:
         """Initialize the pipeline.
 
@@ -87,6 +87,7 @@ class FeatureSelectionPipeline:
         self.bootstrap_num_samples = int(bootstrap_num_samples)
         self.bootstrap_min_freq = float(bootstrap_min_freq)
         self.bootstrap_use_scores = bool(bootstrap_use_scores)
+        self.refit_on_full_data = refit_on_full_data
 
         # set seed for reproducibility
         self._set_seed(self.random_state)
@@ -197,15 +198,33 @@ class FeatureSelectionPipeline:
             (merged_features, best_repeat_idx, best_ensemble_name).
         """
         self._set_seed(self.random_state)
+        self._instantiate_components()
+        self._build_ensemble_index()
+        self._reset_run_tracking()
 
-        # Fresh objects for each run to avoid hidden state
+        result_dicts = [{} for _ in range(self._num_metrics_total())]
+        cv_splits = list(self._cv_splits())
+        parallel_results = self._execute_folds(cv_splits, verbose)
+        self._collect_fold_results(parallel_results, result_dicts)
+
+        best_ensemble, best_repeat = self._select_best_ensemble(result_dicts)
+        if self.refit_on_full_data:
+            merged_full = self._refit_on_full_data(best_ensemble)
+            return (merged_full, None, best_ensemble)
+
+        return (self.merged_features[(int(best_repeat), best_ensemble)], int(best_repeat), best_ensemble)
+
+    # ── Run orchestration helpers ──────────────────────────────────────────────
+    def _instantiate_components(self):
+        """Instantiate selectors, metrics, and mergers fresh for each run."""
         self.fs_methods = [self._load_class(m, instantiate=True) for m in self._fs_method_specs]
         self.metrics = [self._load_class(m, instantiate=True) for m in self._metric_specs]
         self.merging_strategies = [self._load_class(m, instantiate=True) for m in self._merging_specs]
         self.merging_strategy = self.merging_strategies[0]
         self._multiple_mergers = len(self.merging_strategies) > 1
 
-        # Regenerate ensemble names from fresh fs_methods
+    def _build_ensemble_index(self):
+        """Enumerate all selector ensemble × merger combinations."""
         self.selector_ensembles = self._generate_selector_ensembles(self.min_group_size)
         self.ensembles = []
         self.ensemble_lookup = {}
@@ -215,92 +234,135 @@ class FeatureSelectionPipeline:
                 self.ensembles.append(name)
                 self.ensemble_lookup[name] = selectors
 
-        # Reset internal state so that run() always starts fresh
+    def _reset_run_tracking(self):
+        """Clear per-run state containers."""
         self.fs_subsets = {}
         self.merged_features = {}
 
-        num_metrics = len(self.metrics) + 1  # +1 for stability
-        result_dicts = [{} for _ in range(num_metrics)]
-
-        # Ensure we don't allocate more jobs than repeats
-        n_jobs = self._effective_n_jobs()
-
-        # Parallelize repeats with joblib while pinning inner threads to 1 to avoid oversubscription.
+    def _execute_folds(self, cv_splits, verbose):
+        """Run each CV fold, possibly in parallel."""
+        n_jobs = self._effective_n_jobs()  # cap jobs by fold count
+        # Parallelize folds with joblib while pinning inner threads to 1 to avoid oversubscription.
         with parallel_backend("loky", inner_max_num_threads=1):
             parallel_results = Parallel(n_jobs=n_jobs)(
-                delayed(self._pipeline_run_for_repeat)(i, verbose) for i in range(self.num_repeats)
+                delayed(self._pipeline_run_for_fold)(i, train_idx, test_idx, verbose)
+                for i, (train_idx, test_idx) in enumerate(cv_splits)
             )
+        parallel_results.sort(key=lambda x: x[0])  # deterministic ordering by fold index
+        return parallel_results
 
-        # Sort results by repeat index
-        parallel_results.sort(key=lambda x: x[0])  # Now, x[0] is the repeat index
-
-        # Merge results in a fixed order
-        self.fs_subsets = {}
-        self.merged_features = {}
-
-        for (
-            _,
-            partial_fs_subsets,
-            partial_merged_features,
-            partial_result_dicts,
-        ) in parallel_results:
+    def _collect_fold_results(self, parallel_results, result_dicts):
+        """Merge per-fold outputs into unified mappings."""
+        for _, partial_fs_subsets, partial_merged_features, partial_result_dicts in parallel_results:
             self.fs_subsets.update(partial_fs_subsets)
             self.merged_features.update(partial_merged_features)
-            for dict_idx in range(num_metrics):
+            for dict_idx in range(len(result_dicts)):
                 result_dicts[dict_idx].update(partial_result_dicts[dict_idx])
 
-        # Compute Pareto analysis as usual
+    def _select_best_ensemble(self, result_dicts):
+        """Apply Pareto over ensembles and repeats to pick the winner."""
         means_list = self._calculate_means(result_dicts, self.ensembles)
         means_list = [
             group_means if all(mean is not None for mean in group_means) else [-float("inf")] * len(group_means)
             for group_means in means_list
         ]
         best_ensemble = self._compute_pareto(means_list, self.ensembles)
-        best_ensemble_metrics = self._extract_repeat_metrics(best_ensemble, *result_dicts)
-        best_ensemble_metrics = [
-            group_metrics
-            if all(metric is not None for metric in group_metrics)
-            else [-float("inf")] * len(group_metrics)
-            for group_metrics in best_ensemble_metrics
+
+        ensemble_rows = self._extract_repeat_metrics(best_ensemble, *result_dicts)
+        ensemble_rows = [
+            row if all(metric is not None for metric in row) else [-float("inf")] * len(row) for row in ensemble_rows
         ]
-        best_repeat = self._compute_pareto(best_ensemble_metrics, [str(i) for i in range(self.num_repeats)])
+        best_repeat = self._compute_pareto(ensemble_rows, [str(i) for i in range(self.num_repeats)])
+        return best_ensemble, best_repeat
 
-        return (self.merged_features[(int(best_repeat), best_ensemble)], int(best_repeat), best_ensemble)
+    def _refit_on_full_data(self, ensemble_name):
+        """Run selectors and merger on full data for the chosen ensemble."""
+        selectors = self.ensemble_lookup.get(ensemble_name)
+        if selectors is None:
+            raise ValueError(f"Unknown ensemble: {ensemble_name}")
 
-    def _pipeline_run_for_repeat(self, i, verbose):
-        """Execute one repeat and return partial results tuple."""
-        self._set_seed(self._per_repeat_seed(i))
-        train_data, test_data = self._split_data(test_size=0.20, random_state=self._per_repeat_seed(i))
-        fs_subsets_local = self._compute_subset(train_data, i)
+        # Run each selector once on full data
+        fs_subsets_local = {}
+        feature_names = self.X.columns.tolist()
+        X_full = self.X
+        y_full = self.y
+        for fs_method in self.fs_methods:
+            method_name = fs_method.name
+            scores, indices = fs_method.select_features(X_full, y_full)
+            fs_subsets_local[(0, method_name)] = [
+                Feature(
+                    name,
+                    score=scores[i] if scores is not None else None,
+                    selected=(i in indices),
+                )
+                for i, name in enumerate(feature_names)
+            ]
+
+        # Choose appropriate merger (single or by name)
+        if self._multiple_mergers:
+            merger_name = ensemble_name[0]
+            merger = next(m for m in self.merging_strategies if m.name == merger_name)
+        else:
+            merger = self.merging_strategy
+
+        return self._merge_ensemble_features(
+            {(0, name): fs_subsets_local[(0, name)] for name in selectors},
+            0,
+            selectors,
+            merger,
+            bootstrap_stats=None,
+            feature_names=feature_names,
+        )
+
+    def _cv_splits(self):
+        """Yield train/test indices for K-fold CV (stratified when classification)."""
+        if self.task == "classification":
+            from sklearn.model_selection import StratifiedKFold
+
+            cv = StratifiedKFold(
+                n_splits=self.num_repeats,
+                shuffle=True,
+                random_state=self.random_state,
+            )
+            return cv.split(self.X, self.y)
+        else:
+            from sklearn.model_selection import KFold
+
+            cv = KFold(
+                n_splits=self.num_repeats,
+                shuffle=True,
+                random_state=self.random_state,
+            )
+            return cv.split(self.X, self.y)
+
+    def _pipeline_run_for_fold(self, fold_idx, train_idx, test_idx, verbose):
+        """Execute one CV fold and return partial results tuple."""
+        self._set_seed(self._per_repeat_seed(fold_idx))
+        X_train, X_test = self.X.iloc[train_idx], self.X.iloc[test_idx]
+        y_train, y_test = self.y.iloc[train_idx], self.y.iloc[test_idx]
+        train_data = pd.concat([X_train, y_train], axis=1)
+        test_data = pd.concat([X_test, y_test], axis=1)
+
+        fs_subsets_local = self._compute_subset(train_data, fold_idx)
         feature_names = train_data.drop(columns=[self.target_name]).columns.tolist()
         bootstrap_stats = (
-            self._compute_bootstrap_stats(train_data, i, feature_names) if self._should_collect_bootstrap() else None
+            self._compute_bootstrap_stats(train_data, fold_idx, feature_names)
+            if self._should_collect_bootstrap()
+            else None
         )
         merged_features_local = self._compute_merging(
             fs_subsets_local,
-            i,
+            fold_idx,
             verbose,
             bootstrap_stats=bootstrap_stats,
             feature_names=feature_names,
         )
-        local_result_dicts = self._compute_metrics(fs_subsets_local, merged_features_local, train_data, test_data, i)
-
-        # Return repeat index as the first element
-        return i, fs_subsets_local, merged_features_local, local_result_dicts
-
-    def _split_data(self, test_size, random_state):
-        """Split data into train/test using stratification when classification."""
-        stratify = self.y if self.task == "classification" else None
-        X_train, X_test, y_train, y_test = train_test_split(
-            self.X,
-            self.y,
-            test_size=test_size,
-            random_state=random_state,
-            stratify=stratify,
+        local_result_dicts = self._compute_metrics(
+            fs_subsets_local, merged_features_local, train_data, test_data, fold_idx
         )
-        train_df = pd.concat([X_train, y_train], axis=1)
-        test_df = pd.concat([X_test, y_test], axis=1)
-        return train_df, test_df
+
+        # Return fold index as the first element
+        return fold_idx, fs_subsets_local, merged_features_local, local_result_dicts
 
     def _compute_bootstrap_stats(self, train_data, idx, feature_names):
         """Collect selection counts across bootstrap resamples for each selector."""
@@ -690,6 +752,10 @@ class FeatureSelectionPipeline:
             raise ValueError(
                 "Input must be a string identifier or a valid instance of a feature selector or merging strategy."
             )
+
+    def _num_metrics_total(self):
+        """Count performance metrics plus stability."""
+        return len(self.metrics) + 1
 
     def __str__(self):
         return (
