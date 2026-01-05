@@ -55,7 +55,7 @@ def test_multiple_merging_strategies_expand_ensembles():
         data=data,
         fs_methods=[sel1, sel2],
         merging_strategy=[merger_a, merger_b],
-        num_repeats=1,
+        num_repeats=2,
         num_features_to_select=1,
         metrics=[],
         task="classification",
@@ -78,6 +78,7 @@ def test_multiple_merging_strategies_expand_ensembles():
     assert pipeline.merged_features[(0, ("KeepSorted", expected_selectors))] == ["f0"]
     assert pipeline.merged_features[(0, ("ReverseSorted", expected_selectors))] == ["f1"]
 
-    assert best_repeat == 0
+    # Pipeline always refits on full data, so best_repeat is None
+    assert best_repeat is None
     assert best_ensemble in pipeline.ensembles
     assert merged in (["f0"], ["f1"])

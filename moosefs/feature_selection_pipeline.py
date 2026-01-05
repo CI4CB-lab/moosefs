@@ -35,11 +35,7 @@ class FeatureSelectionPipeline:
         fill: bool = False,
         random_state: Optional[int] = None,
         n_jobs: Optional[int] = None,
-        bootstrap: bool = False,
-        bootstrap_num_samples: int = 20,
-        bootstrap_min_freq: float = 0.6,
-        bootstrap_use_scores: bool = True,
-        stability_mode: str = "agreement",  # "agreement", "cross_folds", or "both"
+        stability_mode: str = "fold_stability",  # "selector_agreement", "fold_stability", or "all"
     ) -> None:
         """Initialize the pipeline.
 
@@ -49,7 +45,7 @@ class FeatureSelectionPipeline:
             y: Target Series aligned with ``X``.
             fs_methods: Feature selectors (identifiers or instances).
             merging_strategy: Merging strategy (identifier or instance).
-            num_repeats: Number of repeats for the pipeline.
+            num_repeats: Number of cross-validation folds to run.
             num_features_to_select: Desired number of features to select.
             metrics: Metric functions (identifiers or instances).
             task: 'classification' or 'regression'.
@@ -57,16 +53,19 @@ class FeatureSelectionPipeline:
             fill: If True, enforce exact size after merging.
             random_state: Seed for reproducibility.
             n_jobs: Parallel jobs (use num_repeats when -1 or None).
-            bootstrap: If True, apply bootstrap-based aggregation before merging.
-            bootstrap_num_samples: Number of bootstrap draws per repeat when ``bootstrap`` is True.
-            bootstrap_min_freq: Minimum selection frequency to keep a feature under bootstrap.
-            bootstrap_use_scores: If True, average normalized scores across bootstraps (rank mergers).
+            stability_mode: Stability metric configuration:
+                - "selector_agreement": Stability within ensemble (do selectors agree?)
+                - "fold_stability": Stability across CV folds (consistent features?)
+                - "all": Include both stability metrics in Pareto optimization
+                Default: "fold_stability" (most important for robust features)
 
         Raises:
             ValueError: If task is invalid or required parameters are missing.
 
         Note:
-            Exactly one of ``data`` or the pair ``(X, y)`` must be provided.
+            - Exactly one of ``data`` or the pair ``(X, y)`` must be provided.
+            - Bootstrap is ONLY used by FrequencyBootstrapMerger (merger-specific).
+              Pipeline-level bootstrap has been removed to avoid redundancy with CV.
         """
 
         # parameters validation
@@ -82,10 +81,6 @@ class FeatureSelectionPipeline:
         self.n_jobs = n_jobs
         self.min_group_size = min_group_size
         self.fill = fill
-        self.bootstrap = bootstrap
-        self.bootstrap_num_samples = int(bootstrap_num_samples)
-        self.bootstrap_min_freq = float(bootstrap_min_freq)
-        self.bootstrap_use_scores = bool(bootstrap_use_scores)
         self.stability_mode = stability_mode
 
         # set seed for reproducibility
@@ -164,16 +159,23 @@ class FeatureSelectionPipeline:
         return min(int(n), int(self.num_repeats))
 
     def _merging_requires_bootstrap(self, merger):
-        """Return True when the given merger asks for bootstrap statistics."""
+        """Return True when the given merger asks for bootstrap statistics.
+
+        NOTE: Bootstrap is ONLY used by FrequencyBootstrapMerger, which has its own
+        num_bootstrap parameter. Pipeline-level bootstrap has been removed to avoid
+        redundancy with cross-validation and reduce complexity.
+        """
         needs_bootstrap = getattr(merger, "needs_bootstrap_merging", False)
         num_bootstrap = getattr(merger, "num_bootstrap", 0)
         return bool(needs_bootstrap and num_bootstrap and num_bootstrap > 0)
 
     def _should_collect_bootstrap(self):
-        """Return True if bootstrap stats should be gathered."""
-        if any(self._merging_requires_bootstrap(m) for m in self.merging_strategies):
-            return True
-        return bool(self.bootstrap and self.bootstrap_num_samples > 0)
+        """Return True if bootstrap stats should be gathered.
+
+        Bootstrap is only collected when a merger explicitly requests it
+        (e.g., FrequencyBootstrapMerger with needs_bootstrap_merging=True).
+        """
+        return any(self._merging_requires_bootstrap(m) for m in self.merging_strategies)
 
     def _generate_selector_ensembles(self, min_group_size):
         """Generate all selector-name combinations with minimum size.
@@ -477,85 +479,6 @@ class FeatureSelectionPipeline:
         stats["_feature_names"] = feature_names
         return stats
 
-    def _build_bootstrap_subsets(self, selectors, feature_names, bootstrap_stats):
-        """Construct per-method Feature lists using bootstrap selection frequencies."""
-        if not feature_names or not bootstrap_stats:
-            return None
-
-        n_features = len(feature_names)
-        freq_accum = np.zeros(n_features, dtype=np.float32)
-        score_accum = np.zeros(n_features, dtype=np.float32)
-        per_method_freq = {}
-        per_method_scores = {}
-        num_methods = 0
-
-        for method_name in selectors:
-            stats = bootstrap_stats.get(method_name)
-            if not stats:
-                continue
-            n_runs = stats.get("n_runs", 0)
-            if n_runs <= 0:
-                continue
-            counts = np.asarray(stats.get("counts", []), dtype=np.float32)
-            if counts.shape[0] != n_features:
-                continue
-            freq = counts / float(n_runs)
-            per_method_freq[method_name] = freq
-            freq_accum += freq
-            num_methods += 1
-
-            if self.bootstrap_use_scores:
-                score_sums = np.asarray(stats.get("score_sums", []), dtype=np.float32)
-                avg_scores = np.divide(
-                    score_sums,
-                    counts,
-                    out=np.zeros_like(score_sums),
-                    where=counts > 0,
-                )
-            else:
-                avg_scores = np.zeros_like(freq)
-            per_method_scores[method_name] = avg_scores
-            score_accum += avg_scores
-
-        if num_methods == 0:
-            return None
-
-        global_freq = freq_accum / float(num_methods)
-        global_scores = score_accum / float(num_methods)
-        ranking = sorted(
-            range(n_features),
-            key=lambda i: (global_freq[i], global_scores[i], -i),
-            reverse=True,
-        )
-
-        base_survivors = [i for i, f in enumerate(global_freq) if f >= self.bootstrap_min_freq]
-
-        if self.fill and self.num_features_to_select:
-            max_features = min(self.num_features_to_select, n_features)
-            survivor_idx = [i for i in ranking if i in base_survivors][:max_features]
-            if len(survivor_idx) < max_features:
-                filler_idx = [i for i in ranking if i not in survivor_idx][: max_features - len(survivor_idx)]
-                survivor_idx = survivor_idx + filler_idx
-        else:
-            survivor_idx = base_survivors
-
-        if not survivor_idx:
-            return None
-
-        subsets = []
-        for method_name in selectors:
-            freq = per_method_freq.get(method_name)
-            scores = per_method_scores.get(method_name, np.zeros(n_features, dtype=np.float32))
-            if freq is None:
-                # Method missing stats; skip it to avoid inconsistent lengths.
-                continue
-            features = [Feature(name=feature_names[i], score=float(scores[i]), selected=True) for i in survivor_idx]
-            subsets.append(features)
-
-        if not subsets:
-            return None
-        return subsets
-
     def _compute_subset(self, train_data, idx):
         """Compute selected Feature objects per method for this repeat."""
         self._set_seed(self._per_repeat_seed(idx))
@@ -616,10 +539,15 @@ class FeatureSelectionPipeline:
         bootstrap_stats=None,
         feature_names=None,
     ):
-        """Merge features for a specific ensemble of selectors."""
+        """Merge features for a specific ensemble of selectors.
+
+        NOTE: Bootstrap is ONLY used by FrequencyBootstrapMerger.
+        This merger explicitly requests bootstrap stats via needs_bootstrap_merging=True,
+        and handles all bootstrap aggregation internally.
+        """
         group_features = [[f for f in fs_subsets_local[(idx, method)] if f.selected] for method in selectors]
 
-        # Strategy-provided bootstrap handling (e.g., FrequencyBootstrapMerger)
+        # Merger-specific bootstrap handling (ONLY FrequencyBootstrapMerger)
         if bootstrap_stats and self._merging_requires_bootstrap(merger):
             feature_names = feature_names or bootstrap_stats.get("_feature_names")
             return merger.merge(
@@ -631,18 +559,7 @@ class FeatureSelectionPipeline:
                 bootstrap_stats=bootstrap_stats,
             )
 
-        # Pipeline-level bootstrap pre-processing for any merger
-        if bootstrap_stats and self.bootstrap:
-            preprocessed = self._build_bootstrap_subsets(selectors, feature_names, bootstrap_stats)
-            if preprocessed is not None:
-                subsets = preprocessed
-                is_set_based_attr = getattr(merger, "is_set_based", None)
-                is_set_based = bool(is_set_based_attr()) if callable(is_set_based_attr) else bool(is_set_based_attr)
-                if is_set_based:
-                    return merger.merge(subsets, self.num_features_to_select, fill=self.fill)
-                return merger.merge(subsets, self.num_features_to_select)
-
-        # Determine set-based vs rank-based via method call when available
+        # Standard merging for all other mergers
         is_set_based_attr = getattr(merger, "is_set_based", None)
         if callable(is_set_based_attr):
             is_set_based = bool(is_set_based_attr())
@@ -650,6 +567,7 @@ class FeatureSelectionPipeline:
             is_set_based = is_set_based_attr
         else:
             is_set_based = True
+
         if is_set_based:
             return merger.merge(group_features, self.num_features_to_select, fill=self.fill)
         else:
@@ -750,7 +668,7 @@ class FeatureSelectionPipeline:
                 local_result_dicts[m_idx][key] = val
 
             metric_slot = len(metric_vals)
-            if self.stability_mode in ("agreement", "both"):
+            if self.stability_mode in ("selector_agreement", "all"):
                 fs_lists = [[f.name for f in fs_subsets_local[(idx, method)] if f.selected] for method in selectors]
                 stability = compute_stability_metrics(fs_lists) if fs_lists else 0
                 local_result_dicts[metric_slot][key] = stability
@@ -779,15 +697,15 @@ class FeatureSelectionPipeline:
     def _inject_cross_fold_stability(self, result_dicts):
         """Compute stability of merged features across folds for each ensemble.
 
-        Cross-fold stability is a single value per ensemble (computed across all folds),
-        but we replicate it for each fold index so it can be used in per-fold Pareto selection.
+        Fold stability is a single value per ensemble (computed across all folds),
+        but we replicate it for each fold index so it can be used in Pareto selection.
         """
-        if self.stability_mode not in ("cross_folds", "both"):
+        if self.stability_mode not in ("fold_stability", "all"):
             return result_dicts
 
         # Prepare destination dict index
         dest_idx = len(self.metrics)
-        if self.stability_mode == "both":
+        if self.stability_mode == "all":
             dest_idx += 1
 
         stability_dict = result_dicts[dest_idx] if dest_idx < len(result_dicts) else {}
@@ -893,9 +811,9 @@ class FeatureSelectionPipeline:
     def _num_metrics_total(self):
         """Count performance metrics plus configured stability signals."""
         extra = 0
-        if self.stability_mode in ("agreement", "both"):
+        if self.stability_mode in ("selector_agreement", "all"):
             extra += 1
-        if self.stability_mode in ("cross_folds", "both"):
+        if self.stability_mode in ("fold_stability", "all"):
             extra += 1
         return len(self.metrics) + extra
 
