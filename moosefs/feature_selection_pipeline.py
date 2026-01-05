@@ -1,5 +1,4 @@
 from itertools import combinations
-import os
 import random
 from typing import Any, Optional
 
@@ -118,11 +117,15 @@ class FeatureSelectionPipeline:
         self.ensemble_lookup = {}
 
     @staticmethod
-    def _set_seed(seed, idx=None):
-        """Seed numpy/python RNGs for reproducibility."""
+    def _set_seed(seed):
+        """Seed numpy/python RNGs for reproducibility.
+
+        Note: This sets the global random state. In parallel execution,
+        each worker process has its own random state, so this is safe.
+        PYTHONHASHSEED must be set before Python starts, so we don't set it here.
+        """
         np.random.seed(seed)
         random.seed(seed)
-        os.environ["PYTHONHASHSEED"] = str(seed)
 
     @staticmethod
     def _validate_X_y(*, data=None, X=None, y=None):
@@ -340,7 +343,11 @@ class FeatureSelectionPipeline:
 
     def _pipeline_run_for_fold(self, fold_idx, train_idx, test_idx, verbose):
         """Execute one CV fold and return partial results tuple."""
-        self._set_seed(self._per_repeat_seed(fold_idx))
+        # Set seed at the start of each fold worker for reproducibility
+        # This ensures each parallel worker has consistent random state
+        fold_seed = self._per_repeat_seed(fold_idx)
+        self._set_seed(fold_seed)
+
         X_train, X_test = self.X.iloc[train_idx], self.X.iloc[test_idx]
         y_train, y_test = self.y.iloc[train_idx], self.y.iloc[test_idx]
         train_data = pd.concat([X_train, y_train], axis=1)
@@ -707,7 +714,11 @@ class FeatureSelectionPipeline:
         return means_list
 
     def _inject_cross_fold_stability(self, result_dicts):
-        """Compute stability of merged features across folds for each ensemble."""
+        """Compute stability of merged features across folds for each ensemble.
+
+        Cross-fold stability is a single value per ensemble (computed across all folds),
+        but we replicate it for each fold index so it can be used in per-fold Pareto selection.
+        """
         if self.stability_mode not in ("cross_folds", "both"):
             return result_dicts
 
@@ -724,9 +735,14 @@ class FeatureSelectionPipeline:
                 if (fold_idx, ensemble) in self.merged_features
             ]
             if len(merged_sets) < 2:
-                stability_dict[(None, ensemble)] = 0.0
-                continue
-            stability_dict[(None, ensemble)] = compute_stability_metrics([list(s) for s in merged_sets])
+                stability_value = 0.0
+            else:
+                stability_value = compute_stability_metrics([list(s) for s in merged_sets])
+
+            # Replicate the cross-fold stability value for each fold
+            # so it can be accessed with (fold_idx, ensemble) keys
+            for fold_idx in range(self.num_repeats):
+                stability_dict[(fold_idx, ensemble)] = stability_value
 
         if dest_idx >= len(result_dicts):
             result_dicts.append(stability_dict)
