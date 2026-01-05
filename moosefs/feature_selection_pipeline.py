@@ -203,7 +203,6 @@ class FeatureSelectionPipeline:
             (merged_features, best_repeat_idx, best_ensemble_name).
         """
         self._set_seed(self.random_state)
-        self._instantiate_components()
         self._build_ensemble_index()
         self._reset_run_tracking()
 
@@ -221,13 +220,6 @@ class FeatureSelectionPipeline:
         return (self.merged_features[(int(best_repeat), best_ensemble)], int(best_repeat), best_ensemble)
 
     # ── Run orchestration helpers ──────────────────────────────────────────────
-    def _instantiate_components(self):
-        """Instantiate selectors, metrics, and mergers fresh for each run."""
-        self.fs_methods = [self._load_class(m, instantiate=True) for m in self._fs_method_specs]
-        self.metrics = [self._load_class(m, instantiate=True) for m in self._metric_specs]
-        self.merging_strategies = [self._load_class(m, instantiate=True) for m in self._merging_specs]
-        self.merging_strategy = self.merging_strategies[0]
-        self._multiple_mergers = len(self.merging_strategies) > 1
 
     def _build_ensemble_index(self):
         """Enumerate all selector ensemble × merger combinations."""
@@ -376,8 +368,11 @@ class FeatureSelectionPipeline:
             bootstrap_stats=bootstrap_stats,
             feature_names=feature_names,
         )
+
+        # Create a fold-level cache for model training to share across ensembles
+        fold_model_cache = {}
         local_result_dicts = self._compute_metrics(
-            fs_subsets_local, merged_features_local, train_data, test_data, fold_idx
+            fs_subsets_local, merged_features_local, train_data, test_data, fold_idx, fold_model_cache
         )
 
         # Return fold index as the first element
@@ -619,19 +614,20 @@ class FeatureSelectionPipeline:
         else:
             return merger.merge(group_features, self.num_features_to_select)
 
-    def _compute_performance_metrics(
-        self,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-    ):
-        """Compute performance metrics using configured metric methods."""
+    def _compute_performance_metrics(self, X_train, y_train, X_test, y_test, fold_cache):
+        """Compute performance metrics using configured metric methods.
+
+        Args:
+            X_train, y_train, X_test, y_test: Train/test data
+            fold_cache: Dict for caching model training across ensembles in this fold
+
+        Returns:
+            List of metric values
+        """
         self._set_seed(self.random_state)
         if not self.metrics:
             return []
 
-        shared_results = {}
         metric_values = []
 
         for metric in self.metrics:
@@ -640,14 +636,18 @@ class FeatureSelectionPipeline:
                 metric_values.append(metric.compute(X_train, y_train, X_test, y_test))
                 continue
 
+            # Create cache key: model signature + feature set hash
             signature_fn = getattr(metric, "model_signature", None)
-            cache_key = signature_fn() if callable(signature_fn) else None
-            results = shared_results.get(cache_key) if cache_key is not None else None
+            model_sig = signature_fn() if callable(signature_fn) else None
+            feature_hash = tuple(X_train.columns) if hasattr(X_train, "columns") else id(X_train)
+            cache_key = (model_sig, feature_hash) if model_sig is not None else None
+
+            results = fold_cache.get(cache_key) if cache_key is not None else None
 
             if results is None:
                 results = metric.train_and_predict(X_train, y_train, X_test, y_test)
                 if cache_key is not None:
-                    shared_results[cache_key] = results
+                    fold_cache[cache_key] = results
 
             metric_values.append(aggregator(y_test, results))
 
@@ -660,8 +660,20 @@ class FeatureSelectionPipeline:
         train_data,
         test_data,
         idx,
+        fold_cache,
     ):
-        """Compute performance and stability metrics for each ensemble."""
+        """Compute performance and stability metrics for each ensemble.
+
+        Args:
+            fs_subsets_local: Feature subsets per selector
+            merged_features_local: Merged features per ensemble
+            train_data, test_data: Train/test splits
+            idx: Fold index
+            fold_cache: Shared cache for model training across ensembles
+
+        Returns:
+            List of result dicts (one per metric)
+        """
         self._set_seed(self._per_repeat_seed(idx))
         num_metrics = self._num_metrics_total()
         local_result_dicts = [{} for _ in range(num_metrics)]
@@ -691,6 +703,7 @@ class FeatureSelectionPipeline:
                 y_train_full,
                 X_test_subset,
                 y_test_full,
+                fold_cache,
             )
             for m_idx, val in enumerate(metric_vals):
                 local_result_dicts[m_idx][key] = val
