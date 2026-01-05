@@ -268,10 +268,19 @@ class FeatureSelectionPipeline:
     def _select_best_ensemble(self, result_dicts):
         """Apply Pareto over ensembles and repeats to pick the winner."""
         means_list = self._calculate_means(result_dicts, self.ensembles)
-        means_list = [
-            group_means if all(mean is not None for mean in group_means) else [-float("inf")] * len(group_means)
-            for group_means in means_list
-        ]
+
+        # Track and warn about failed ensembles
+        failed_ensembles = []
+        for i, (ensemble, group_means) in enumerate(zip(self.ensembles, means_list)):
+            if not all(mean is not None for mean in group_means):
+                failed_ensembles.append(ensemble)
+                means_list[i] = [-float("inf")] * len(group_means)
+
+        if failed_ensembles:
+            print(f"Warning: {len(failed_ensembles)}/{len(self.ensembles)} ensembles failed to produce valid features")
+            if len(failed_ensembles) <= 5:
+                print(f"  Failed ensembles: {failed_ensembles}")
+
         best_ensemble = self._compute_pareto(means_list, self.ensembles)
 
         ensemble_rows = self._extract_repeat_metrics(best_ensemble, *result_dicts)
@@ -752,7 +761,29 @@ class FeatureSelectionPipeline:
 
     @staticmethod
     def _compute_pareto(values, names):
-        """Return the name of the winner using Pareto analysis."""
+        """Return the name of the winner using Pareto analysis.
+
+        Args:
+            values: List of metric vectors (one per group).
+            names: Corresponding group names.
+
+        Returns:
+            Name of the best group according to Pareto dominance.
+
+        Raises:
+            ValueError: If all groups have failed (all -inf values).
+        """
+        if not values:
+            raise ValueError("Cannot perform Pareto analysis with no data.")
+
+        # Check if all ensembles have completely failed
+        all_failed = all(all(v == -float("inf") for v in vec) for vec in values)
+        if all_failed:
+            raise ValueError(
+                "All ensembles failed to produce valid features. "
+                "Check your feature selector and merging strategy configuration."
+            )
+
         pareto = ParetoAnalysis(values, names)
         pareto_results = pareto.get_results()
         return pareto_results[0][0]
