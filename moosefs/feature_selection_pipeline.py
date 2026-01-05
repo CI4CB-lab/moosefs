@@ -39,7 +39,6 @@ class FeatureSelectionPipeline:
         bootstrap_num_samples: int = 20,
         bootstrap_min_freq: float = 0.6,
         bootstrap_use_scores: bool = True,
-        refit_on_full_data: bool = False,
         stability_mode: str = "agreement",  # "agreement", "cross_folds", or "both"
     ) -> None:
         """Initialize the pipeline.
@@ -87,7 +86,6 @@ class FeatureSelectionPipeline:
         self.bootstrap_num_samples = int(bootstrap_num_samples)
         self.bootstrap_min_freq = float(bootstrap_min_freq)
         self.bootstrap_use_scores = bool(bootstrap_use_scores)
-        self.refit_on_full_data = refit_on_full_data
         self.stability_mode = stability_mode
 
         # set seed for reproducibility
@@ -212,12 +210,11 @@ class FeatureSelectionPipeline:
         self._collect_fold_results(parallel_results, result_dicts)
 
         result_dicts = self._inject_cross_fold_stability(result_dicts)
-        best_ensemble, best_repeat = self._select_best_ensemble(result_dicts)
-        if self.refit_on_full_data:
-            merged_full = self._refit_on_full_data(best_ensemble)
-            return (merged_full, None, best_ensemble)
+        best_ensemble, _ = self._select_best_ensemble(result_dicts)
 
-        return (self.merged_features[(int(best_repeat), best_ensemble)], int(best_repeat), best_ensemble)
+        # Always refit on full data for best generalization
+        merged_full = self._refit_on_full_data(best_ensemble)
+        return (merged_full, None, best_ensemble)
 
     # ── Run orchestration helpers ──────────────────────────────────────────────
 
@@ -258,29 +255,73 @@ class FeatureSelectionPipeline:
                 result_dicts[dict_idx].update(partial_result_dicts[dict_idx])
 
     def _select_best_ensemble(self, result_dicts):
-        """Apply Pareto over ensembles and repeats to pick the winner."""
-        means_list = self._calculate_means(result_dicts, self.ensembles)
+        """Select best ensemble using single-stage Pareto with consistency metric.
 
-        # Track and warn about failed ensembles
+        For each ensemble, computes:
+        - Mean of each performance metric across folds
+        - Consistency score (inverse of average std across performance metrics)
+        - Stability metrics (already computed per ensemble)
+
+        Returns:
+            Tuple of (best_ensemble_name, best_fold_idx)
+            Note: best_fold_idx is None when refit_on_full_data=True
+        """
+        num_performance_metrics = len(self.metrics)
+        ensemble_metrics = []
         failed_ensembles = []
-        for i, (ensemble, group_means) in enumerate(zip(self.ensembles, means_list)):
-            if not all(mean is not None for mean in group_means):
-                failed_ensembles.append(ensemble)
-                means_list[i] = [-float("inf")] * len(group_means)
 
+        for ensemble in self.ensembles:
+            # Extract all fold results for this ensemble
+            fold_results = []
+            for fold_idx in range(self.num_repeats):
+                key = (fold_idx, ensemble)
+                # Get performance metrics only (not stability yet)
+                fold_metrics = [result_dicts[m_idx].get(key) for m_idx in range(num_performance_metrics)]
+                if all(m is not None for m in fold_metrics):
+                    fold_results.append(fold_metrics)
+
+            # Check if ensemble failed
+            if len(fold_results) == 0:
+                failed_ensembles.append(ensemble)
+                # Create vector of -inf for failed ensembles
+                # Length: performance metrics + consistency + stability metrics
+                num_metrics = num_performance_metrics + 1 + (self._num_metrics_total() - num_performance_metrics)
+                ensemble_metrics.append([-float("inf")] * num_metrics)
+                continue
+
+            # Compute mean and std for each performance metric
+            fold_results_array = np.array(fold_results)  # shape: (num_folds, num_metrics)
+            means = np.mean(fold_results_array, axis=0)
+            stds = np.std(fold_results_array, axis=0)
+
+            # Compute consistency score: inverse of average std
+            # Add small epsilon to avoid division by zero
+            avg_std = np.mean(stds)
+            consistency = 1.0 / (1.0 + avg_std)
+
+            # Build metric vector: [mean1, mean2, ..., consistency, stability_metrics...]
+            metric_vector = list(means) + [consistency]
+
+            # Add stability metrics (already aggregated per ensemble, not per fold)
+            stability_start_idx = num_performance_metrics
+            for stability_idx in range(stability_start_idx, self._num_metrics_total()):
+                # Stability metrics are replicated across folds, so just take first
+                stability_value = result_dicts[stability_idx].get((0, ensemble), 0.0)
+                metric_vector.append(stability_value)
+
+            ensemble_metrics.append(metric_vector)
+
+        # Warn about failed ensembles
         if failed_ensembles:
             print(f"Warning: {len(failed_ensembles)}/{len(self.ensembles)} ensembles failed to produce valid features")
             if len(failed_ensembles) <= 5:
                 print(f"  Failed ensembles: {failed_ensembles}")
 
-        best_ensemble = self._compute_pareto(means_list, self.ensembles)
+        # Single Pareto optimization over all metrics
+        best_ensemble = self._compute_pareto(ensemble_metrics, self.ensembles)
 
-        ensemble_rows = self._extract_repeat_metrics(best_ensemble, *result_dicts)
-        ensemble_rows = [
-            row if all(metric is not None for metric in row) else [-float("inf")] * len(row) for row in ensemble_rows
-        ]
-        best_repeat = self._compute_pareto(ensemble_rows, [str(i) for i in range(self.num_repeats)])
-        return best_ensemble, best_repeat
+        # Return None for fold index - caller should refit on full data
+        return best_ensemble, None
 
     def _refit_on_full_data(self, ensemble_name):
         """Run selectors and merger on full data for the chosen ensemble."""
