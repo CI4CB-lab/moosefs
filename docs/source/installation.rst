@@ -13,8 +13,8 @@ Install from Source
 
 .. code-block:: bash
 
-    git clone https://github.com/arthurbabey/ensemblefs.git
-    cd ensemblefs
+    git clone https://github.com/CI4CB-lab/moosefs.git
+    cd moosefs
     pip install .
 
 Editable/development installs:
