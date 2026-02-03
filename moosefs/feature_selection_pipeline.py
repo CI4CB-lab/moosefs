@@ -200,7 +200,10 @@ class FeatureSelectionPipeline:
         """Execute the pipeline and return best merged features.
 
         Returns:
-            (merged_features, best_repeat_idx, best_ensemble_name).
+            tuple: (selected_features, best_ensemble_name)
+                - selected_features: List of selected feature names
+                - best_ensemble_name: Name of the best ensemble (tuple of selector names,
+                  or (merger_name, selectors) if multiple mergers are used)
         """
         self._set_seed(self.random_state)
         self._build_ensemble_index()
@@ -216,7 +219,7 @@ class FeatureSelectionPipeline:
 
         # Always refit on full data for best generalization
         merged_full = self._refit_on_full_data(best_ensemble)
-        return (merged_full, None, best_ensemble)
+        return (merged_full, best_ensemble)
 
     # ── Run orchestration helpers ──────────────────────────────────────────────
 

@@ -53,9 +53,8 @@ jobs:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
 
-      # To publish to real PyPI for a tagged release, uncomment below
-      # - name: Publish distribution 📦 to PyPI
-      #   if: github.event_name == 'release' && github.event.release.target_commitish == 'main'
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish distribution to PyPI
+        if: github.event_name == 'release' && github.event.release.target_commitish == 'main'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

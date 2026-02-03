@@ -42,11 +42,9 @@ def pipeline_instance(request):
 
 
 def test_feature_selection_pipeline(pipeline_instance):
-    best_features, best_repeat, best_ensemble = pipeline_instance()
+    best_features, best_ensemble = pipeline_instance()
 
     assert best_features is not None, "Best features should not be None"
-    # Pipeline always refits on full data, so best_repeat is None
-    assert best_repeat is None, "Best repeat should be None (pipeline refits on full data)"
     assert best_ensemble is not None, "Best ensemble should not be None"
 
     assert all(feature in pipeline_instance.data.columns for feature in best_features), (
@@ -96,14 +94,12 @@ def test_pipeline_with_varied_metrics(merging_strategy, metrics):
         random_state=random_state,
         n_jobs=n_jobs,
     )
-    best_features, best_repeat, best_ensemble = pipeline()
+    best_features, best_ensemble = pipeline()
 
     assert best_features is not None, "Best features should not be None"
     assert len(best_features) == num_features_to_select, (
         "Fill is set to true, so the number of features should be equal to num_features_to_select."
     )
-    # Pipeline always refits on full data, so best_repeat is None
-    assert best_repeat is None, "Best repeat should be None (pipeline refits on full data)"
     assert best_ensemble in pipeline.ensembles, "Best ensemble must be valid."
 
 

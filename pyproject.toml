@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "moose-fs"
-version = "0.0.1"
+version = "0.2.0"
 description = "MOOSE-FS: Multi-Objective Optimized Ensemble Feature Selection"
 readme = "README.md"
 authors = [

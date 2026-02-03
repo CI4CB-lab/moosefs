@@ -27,6 +27,12 @@ The library allows defining feature selectors, merging strategies, and metrics e
 
 ## Installation
 
+### From PyPI (Recommended)
+
+```bash
+pip install moose-fs
+```
+
 ### From Source
 
 To install the package from source, run:
@@ -76,11 +82,22 @@ pipeline = FeatureSelectionPipeline(
     num_repeats=5,
     task="classification",
     num_features_to_select=10,
+    stability_mode="fold_stability",  # Options: "selector_agreement", "fold_stability", "all"
 )
-results = pipeline.run()
+
+# Run the pipeline
+selected_features, best_ensemble = pipeline.run()
 ```
 
-This will run feature selection, merge results using the chosen strategy, and return the best-selected features.
+This will run feature selection using K-fold cross-validation, merge results using the chosen strategy, and return the best-selected features after refitting on the full dataset.
+
+#### Stability Modes
+
+The `stability_mode` parameter controls which stability metrics are included in the Pareto optimization:
+
+- `"selector_agreement"`: Measures agreement between selectors within each ensemble
+- `"fold_stability"`: Measures consistency of selected features across CV folds (default)
+- `"all"`: Includes both stability metrics in the optimization
 
 ### 2. Extensibility
 

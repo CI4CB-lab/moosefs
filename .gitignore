@@ -46,3 +46,7 @@ results/
 tests/test_experiment/
 docs/build/
 uv.lock
+
+# Benchmark files (keep locally for reference)
+benchmark_report*.txt
+scripts/benchmark_branches.py

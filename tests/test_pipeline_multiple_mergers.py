@@ -64,7 +64,7 @@ def test_multiple_merging_strategies_expand_ensembles():
         random_state=42,
     )
 
-    merged, best_repeat, best_ensemble = pipeline.run(verbose=False)
+    merged, best_ensemble = pipeline.run(verbose=False)
 
     assert pipeline._multiple_mergers is True
     expected_selectors = ("s1", "s2")
@@ -78,7 +78,5 @@ def test_multiple_merging_strategies_expand_ensembles():
     assert pipeline.merged_features[(0, ("KeepSorted", expected_selectors))] == ["f0"]
     assert pipeline.merged_features[(0, ("ReverseSorted", expected_selectors))] == ["f1"]
 
-    # Pipeline always refits on full data, so best_repeat is None
-    assert best_repeat is None
     assert best_ensemble in pipeline.ensembles
     assert merged in (["f0"], ["f1"])
