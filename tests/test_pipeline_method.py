@@ -52,18 +52,18 @@ def test_compute_pareto_analysis(pipeline_instance):
     assert best_group_name == "Group 3"
 
 
-def test_generate_subgroups_names(pipeline_instance):
+def test_generate_selector_ensembles(pipeline_instance):
     # Test with a minimum combination size of 3
     min_size = 3
-    subgroup_names = pipeline_instance._generate_subgroup_names(min_group_size=min_size)
+    selector_sets = pipeline_instance._generate_selector_ensembles(min_group_size=min_size)
 
     # Calculate the expected number of combinations with 5 methods (size 3 and above)
     expected_combinations = 16  # Combinations of size 3 and size 4 and size 5
-    assert len(subgroup_names) == expected_combinations
+    assert len(selector_sets) == expected_combinations
 
-    for group in subgroup_names:
-        assert len(group) >= min_size  # Ensure each group has at least the minimum size
-        for name in group:
+    for ensemble in selector_sets:
+        assert len(ensemble) >= min_size  # Ensure each ensemble has at least the minimum size
+        for name in ensemble:
             assert isinstance(name, str)
             assert name in [
                 "MutualInfo",
@@ -75,7 +75,7 @@ def test_generate_subgroups_names(pipeline_instance):
 
     # Test for the ValueError when min_size exceeds the number of methods
     with pytest.raises(ValueError):
-        pipeline_instance._generate_subgroup_names(min_group_size=6)
+        pipeline_instance._generate_selector_ensembles(min_group_size=6)
 
     for min_size, expected_combinations in zip([2, 4, 5], [26, 6, 1]):
-        assert len(pipeline_instance._generate_subgroup_names(min_group_size=min_size)) == expected_combinations
+        assert len(pipeline_instance._generate_selector_ensembles(min_group_size=min_size)) == expected_combinations

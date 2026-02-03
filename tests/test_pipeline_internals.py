@@ -27,15 +27,6 @@ def _tiny_pipeline():
     )
 
 
-def test_replace_none_behaviour():
-    pl = _tiny_pipeline()
-    # one group has a None → whole row becomes -inf values
-    metrics = [[0.1, 0.2], [None, 0.3]]
-    cleaned = pl._replace_none(metrics)
-    assert cleaned[0] == [0.1, 0.2]
-    assert cleaned[1] == [-float("inf"), -float("inf")]
-
-
 def test_calculate_means_and_extract_repeat_metrics():
     pl = _tiny_pipeline()
     # build artificial result_dicts for two metrics

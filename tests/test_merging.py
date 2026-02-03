@@ -4,6 +4,7 @@ from moosefs.core.feature import Feature
 from moosefs.merging_strategies import (
     ArithmeticMeanMerger,
     BordaMerger,
+    FrequencyBootstrapMerger,
     L2NormMerger,
     UnionOfIntersectionsMerger,
 )
@@ -27,6 +28,11 @@ def l2norm_merger():
 @pytest.fixture
 def arithmetic_mean_merger():
     return ArithmeticMeanMerger()
+
+
+@pytest.fixture
+def frequency_merger():
+    return FrequencyBootstrapMerger(num_bootstrap=5, min_freq=0.6, use_scores=True, fill=False)
 
 
 def subset_to_Feature(subset):
@@ -113,6 +119,60 @@ def test_borda_single_score_list(borda_merger):
     subsets = [[Feature("A", 10), Feature("B", 8), Feature("C", 6)]]
     result = borda_merger.merge(subsets, num_features_to_select=3)
     assert result == ["A", "B", "C"]
+
+
+def test_frequency_basic_threshold(frequency_merger):
+    feature_names = ["a", "b", "c"]
+    stats = {
+        "m1": {"counts": [3, 1, 0], "score_sums": [3.0, 1.0, 0.0], "n_runs": 5},
+        "m2": {"counts": [4, 2, 0], "score_sums": [4.0, 2.0, 0.0], "n_runs": 5},
+    }
+    merged = frequency_merger.merge(
+        [],
+        num_features_to_select=3,
+        group=("m1", "m2"),
+        feature_names=feature_names,
+        bootstrap_stats=stats,
+    )
+    # feature "a" has freq 0.7, "b" 0.3, "c" 0.0 with min_freq=0.6
+    assert merged == ["a"]
+
+
+def test_frequency_fill_and_score_tiebreak(frequency_merger):
+    feature_names = ["a", "b", "c"]
+    stats = {
+        "m1": {"counts": [3, 3, 0], "score_sums": [5.0, 4.0, 0.0], "n_runs": 5},
+        "m2": {"counts": [3, 3, 0], "score_sums": [6.0, 1.0, 0.0], "n_runs": 5},
+    }
+    merged = frequency_merger.merge(
+        [],
+        num_features_to_select=2,
+        group=("m1", "m2"),
+        feature_names=feature_names,
+        bootstrap_stats=stats,
+        fill=True,
+    )
+    # "a" and "b" have equal freq=0.6; scores break tie to keep "a" first
+    assert merged == ["a", "b"]
+
+
+def test_frequency_fill_pads_when_under_min_freq():
+    feature_names = ["a", "b", "c"]
+    stats = {
+        "m1": {"counts": [5, 1, 0], "score_sums": [5.0, 1.0, 0.0], "n_runs": 5},
+        "m2": {"counts": [4, 0, 0], "score_sums": [4.0, 0.0, 0.0], "n_runs": 5},
+    }
+    merger = FrequencyBootstrapMerger(num_bootstrap=5, min_freq=0.8, use_scores=False, fill=True)
+    merged = merger.merge(
+        [],
+        num_features_to_select=2,
+        group=("m1", "m2"),
+        feature_names=feature_names,
+        bootstrap_stats=stats,
+        fill=True,
+    )
+    # Only "a" clears the threshold; fill=True should backfill the next-best by frequency.
+    assert merged == ["a", "b"]
 
 
 def test_borda_multiple_scores(borda_merger):

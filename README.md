@@ -27,6 +27,12 @@ The library allows defining feature selectors, merging strategies, and metrics e
 
 ## Installation
 
+### From PyPI (Recommended)
+
+```bash
+pip install moose-fs
+```
+
 ### From Source
 
 To install the package from source, run:
@@ -76,11 +82,22 @@ pipeline = FeatureSelectionPipeline(
     num_repeats=5,
     task="classification",
     num_features_to_select=10,
+    stability_mode="fold_stability",  # Options: "selector_agreement", "fold_stability", "all"
 )
-results = pipeline.run()
+
+# Run the pipeline
+selected_features, best_ensemble = pipeline.run()
 ```
 
-This will run feature selection, merge results using the chosen strategy, and return the best-selected features.
+This will run feature selection using K-fold cross-validation, merge results using the chosen strategy, and return the best-selected features after refitting on the full dataset.
+
+#### Stability Modes
+
+The `stability_mode` parameter controls which stability metrics are included in the Pareto optimization:
+
+- `"selector_agreement"`: Measures agreement between selectors within each ensemble
+- `"fold_stability"`: Measures consistency of selected features across CV folds (default)
+- `"all"`: Includes both stability metrics in the optimization
 
 ### 2. Extensibility
 
@@ -90,48 +107,6 @@ MOOSE-FS is designed to be easily extended. Users can implement custom:
 - **Metrics**: Add new evaluation metrics tailored to specific tasks.
 
 New methods can be used directly in the pipeline by passing the class or a corresponding identifier.
-
----
-
-## Using the CLI
-
-Once installed, the pipeline can also be run from the command line using:
-
-```bash
-efs-pipeline
-```
-
-This command executes `scripts/main.py` using parameters from `scripts/config.yaml`. Users can specify a different config file:
-
-```bash
-efs-pipeline path/to/your_config.yaml
-```
-
-### Example `config.yaml`
-
-```yaml
-experiment:
-  name: "example_experiment"
-  results_path: "results/"
-  data_path: "data/input_data.csv"
-
-preprocessing:
-  normalize: true
-  handle_missing: true
-
-pipeline:
-  fs_methods: ["f_statistic_selector", "random_forest_selector"]
-  merging_strategy: "union_of_intersections_merger"
-  num_repeats: 5
-  task: "classification"
-  num_features_to_select: 10
-```
-
-### Results
-
-The results are saved in a structured directory under `results/example_experiment/`, including:
-- A **text file** summarizing the pipeline run.
-- A **CSV file** containing the final results.
 
 ---
 

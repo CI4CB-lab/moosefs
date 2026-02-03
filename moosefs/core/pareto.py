@@ -74,13 +74,32 @@ class ParetoAnalysis:
         if len(tied_rows) > 1:
             tied_data = np.vstack([r[4] for r in tied_rows], dtype=float)
 
-            mins, maxs = tied_data.min(0), tied_data.max(0)
-            span = np.where(maxs - mins == 0, 1, maxs - mins)
-            scaled = (tied_data - mins) / span  # 0-1 per metric
-            dists = np.linalg.norm(1.0 - scaled, axis=1)  # to utopia (1,…,1)
+            # Handle -inf values: replace with large negative for stable scaling
+            # Ensembles with -inf metrics are failed and should rank last in ties
+            has_inf = np.isinf(tied_data)
+            if has_inf.any():
+                tied_data = tied_data.copy()
+                tied_data[has_inf] = np.nan  # Mark -inf as NaN for exclusion
 
-            best_local_idx = int(dists.argmin())  # index inside tied_rows
-            best_row = tied_rows[best_local_idx]
+            # Filter out rows that are all NaN (completely failed ensembles)
+            valid_mask = ~np.all(np.isnan(tied_data), axis=1)
+            if valid_mask.any():
+                # Use only valid rows for tie-breaking
+                valid_indices = np.where(valid_mask)[0]
+                valid_data = tied_data[valid_mask]
+
+                mins, maxs = np.nanmin(valid_data, axis=0), np.nanmax(valid_data, axis=0)
+                span = np.where(maxs - mins == 0, 1, maxs - mins)
+                scaled = (valid_data - mins) / span  # 0-1 per metric (ignoring NaN)
+                # Replace NaN with 0 (worst value) for distance calculation
+                scaled = np.nan_to_num(scaled, nan=0.0)
+                dists = np.linalg.norm(1.0 - scaled, axis=1)  # to utopia (1,…,1)
+
+                best_local_idx = int(dists.argmin())
+                best_row = tied_rows[valid_indices[best_local_idx]]
+            else:
+                # All tied rows are completely failed, just pick first
+                best_row = tied_rows[0]
 
             # place best_row at position 0, keep relative order of the rest
             self.results.remove(best_row)

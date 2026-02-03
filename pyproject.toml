@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "moose-fs"
-version = "0.1.0"
+version = "0.2.0"
 description = "MOOSE-FS: Multi-Objective Optimized Ensemble Feature Selection"
 readme = "README.md"
 authors = [
@@ -17,7 +17,6 @@ dependencies = [
     "numpy",
     "pandas",
     "scikit-learn>=1.5.0",
-    "pyyaml",
     "xgboost",
     "ranky",
     "mrmr_selection",
@@ -68,13 +67,9 @@ dev = [
     "pre-commit",
 ]
 
-[project.scripts]
-efs-pipeline = "scripts.main:main"
-
 [tool.hatch.build.targets.wheel]
 include = [
     "moosefs/**",
-    "scripts/**",
     "README.md",
     "LICENSE",
 ]
@@ -100,7 +95,6 @@ exclude = [
 select = ["E", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/main.py" = ["E402"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
