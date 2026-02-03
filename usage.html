@@ -48,6 +48,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stability-modes">Stability Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiple-merging-strategies">Multiple Merging Strategies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#extendability">Extendability</a></li>
 </ul>
 </li>
@@ -82,7 +84,7 @@
 <h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">moosefs</span></code> package provides a customizable, ensemble‑based feature selection pipeline that balances predictive performance and stability. The core entry is <code class="docutils literal notranslate"><span class="pre">FeatureSelectionPipeline</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">moosefs</span></code> package provides a customizable, ensemble-based feature selection pipeline that balances predictive performance and stability. The core entry is <code class="docutils literal notranslate"><span class="pre">FeatureSelectionPipeline</span></code>.</p>
 </section>
 <section id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
@@ -103,10 +105,47 @@
     <span class="n">num_repeats</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
     <span class="n">task</span><span class="o">=</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span>
     <span class="n">num_features_to_select</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">stability_mode</span><span class="o">=</span><span class="s2">&quot;fold_stability&quot;</span><span class="p">,</span>  <span class="c1"># Options: &quot;selector_agreement&quot;, &quot;fold_stability&quot;, &quot;all&quot;</span>
 <span class="p">)</span>
-<span class="c1"># The shorthand `FeatureSelectionPipeline(data=data, ...)` also works.</span>
-<span class="n">best</span><span class="p">,</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">group</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">best</span><span class="p">)</span>
+
+<span class="c1"># Run the pipeline</span>
+<span class="n">selected_features</span><span class="p">,</span> <span class="n">best_ensemble</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features using ensemble: </span><span class="si">{</span><span class="n">best_ensemble</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="stability-modes">
+<h2>Stability Modes<a class="headerlink" href="#stability-modes" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">stability_mode</span></code> parameter controls which stability metrics are included in the Pareto optimization:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;selector_agreement&quot;</span></code>: Measures how much the selectors within each ensemble agree on feature selection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;fold_stability&quot;</span></code>: Measures consistency of selected features across cross-validation folds (default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code>: Includes both stability metrics in the optimization</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use both stability metrics for maximum robustness</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">FeatureSelectionPipeline</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+    <span class="n">fs_methods</span><span class="o">=</span><span class="n">fs_methods</span><span class="p">,</span>
+    <span class="n">merging_strategy</span><span class="o">=</span><span class="n">merging_strategy</span><span class="p">,</span>
+    <span class="n">num_repeats</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">task</span><span class="o">=</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span>
+    <span class="n">num_features_to_select</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">stability_mode</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="multiple-merging-strategies">
+<h2>Multiple Merging Strategies<a class="headerlink" href="#multiple-merging-strategies" title="Link to this heading"></a></h2>
+<p>You can pass multiple merging strategies to evaluate different combination approaches:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">FeatureSelectionPipeline</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+    <span class="n">fs_methods</span><span class="o">=</span><span class="n">fs_methods</span><span class="p">,</span>
+    <span class="n">merging_strategy</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;borda_merger&quot;</span><span class="p">,</span> <span class="s2">&quot;union_of_intersections_merger&quot;</span><span class="p">],</span>
+    <span class="n">num_repeats</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">task</span><span class="o">=</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span>
+    <span class="n">num_features_to_select</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -123,7 +162,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="c1"># return a 1D numpy array of per‑feature scores</span>
+        <span class="c1"># return a 1D numpy array of per-feature scores</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 </pre></div>
 </div>

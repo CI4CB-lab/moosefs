@@ -71,9 +71,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for moosefs.metrics.stability_metrics</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">moosefs.core.novovicova</span><span class="w"> </span><span class="kn">import</span> <span class="n">StabilityNovovicova</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">moosefs.core.novovicova</span><span class="w"> </span><span class="kn">import</span> <span class="n">StabilityNovovicova</span>
 
 
 <div class="viewcode-block" id="compute_stability_metrics">
@@ -96,38 +94,6 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_jaccard</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">set</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Jaccard similarity, handling empty sets as 1.0 if both empty.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span> <span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">)</span> <span class="k">if</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span> <span class="k">else</span> <span class="mf">1.0</span></div>
-
-
-
-<div class="viewcode-block" id="diversity_agreement">
-<a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.stability_metrics.diversity_agreement">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">diversity_agreement</span><span class="p">(</span><span class="n">selectors</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">merged</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Blend diversity and agreement into a single score.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        selectors: List of selected feature lists (one per selector).</span>
-<span class="sd">        merged: Merged/core feature names for the group.</span>
-<span class="sd">        alpha: Weight on agreement (0 → pure diversity, 1 → pure agreement).</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Score in [0, 1] (higher is better).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">k</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">selectors</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># cannot measure diversity with a single selector</span>
-
-    <span class="n">sets</span> <span class="o">=</span> <span class="p">[</span><span class="nb">set</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">selectors</span><span class="p">]</span>
-    <span class="n">core</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">merged</span><span class="p">)</span>
-
-    <span class="c1"># 1) diversity  (average Jaccard *dissimilarity* across selector pairs)</span>
-    <span class="n">pair_dis</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">_jaccard</span><span class="p">(</span><span class="n">sets</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">sets</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="mi">2</span><span class="p">)]</span>
-    <span class="n">diversity</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">pair_dis</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">pair_dis</span><span class="p">)</span>
-
-    <span class="c1"># 2) agreement (mean similarity of each selector to the core)</span>
-    <span class="n">agree</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">_jaccard</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sets</span><span class="p">)</span> <span class="o">/</span> <span class="n">k</span>
-
-    <span class="c1"># 3) linear blend</span>
-    <span class="k">return</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">diversity</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">agree</span></div>
 
 </pre></div>
 

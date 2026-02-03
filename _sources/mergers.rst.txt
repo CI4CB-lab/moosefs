@@ -31,3 +31,7 @@ Mergers Module
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: moosefs.merging_strategies.frequency_bootstrap_merger
+   :members:
+   :undoc-members:
+   :show-inheritance:

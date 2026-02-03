@@ -161,7 +161,6 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.stability_metrics.compute_stability_metrics"><code class="docutils literal notranslate"><span class="pre">compute_stability_metrics()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.stability_metrics._jaccard"><code class="docutils literal notranslate"><span class="pre">_jaccard()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#moosefs.metrics.stability_metrics.diversity_agreement"><code class="docutils literal notranslate"><span class="pre">diversity_agreement()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1019,24 +1018,6 @@
 <dt class="sig sig-object py" id="moosefs.metrics.stability_metrics._jaccard">
 <span class="sig-prename descclassname"><span class="pre">moosefs.metrics.stability_metrics.</span></span><span class="sig-name descname"><span class="pre">_jaccard</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/stability_metrics.html#_jaccard"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.stability_metrics._jaccard" title="Link to this definition"></a></dt>
 <dd><p>Return Jaccard similarity, handling empty sets as 1.0 if both empty.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="moosefs.metrics.stability_metrics.diversity_agreement">
-<span class="sig-prename descclassname"><span class="pre">moosefs.metrics.stability_metrics.</span></span><span class="sig-name descname"><span class="pre">diversity_agreement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selectors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merged</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/moosefs/metrics/stability_metrics.html#diversity_agreement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.metrics.stability_metrics.diversity_agreement" title="Link to this definition"></a></dt>
-<dd><p>Blend diversity and agreement into a single score.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>selectors</strong> – List of selected feature lists (one per selector).</p></li>
-<li><p><strong>merged</strong> – Merged/core feature names for the group.</p></li>
-<li><p><strong>alpha</strong> – Weight on agreement (0 → pure diversity, 1 → pure agreement).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Score in [0, 1] (higher is better).</p>
-</dd>
-</dl>
 </dd></dl>
 
 </section>

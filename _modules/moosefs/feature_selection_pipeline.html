@@ -72,22 +72,17 @@
              
   <h1>Source code for moosefs.feature_selection_pipeline</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span><span class="p">,</span> <span class="n">parallel_backend</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="c1"># tqdm is not used; keep imports minimal</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">Feature</span><span class="p">,</span> <span class="n">ParetoAnalysis</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.metrics.stability_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_stability_metrics</span><span class="p">,</span> <span class="n">diversity_agreement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.metrics.stability_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_stability_metrics</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_params</span><span class="p">,</span> <span class="n">get_class_info</span>
-
-<span class="c1"># for test purpose</span>
-<span class="n">agreement_flag</span> <span class="o">=</span> <span class="kc">False</span>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline">
@@ -96,7 +91,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;End-to-end pipeline for ensemble feature selection.</span>
 
 <span class="sd">    Orchestrates feature scoring, merging, metric evaluation, and Pareto-based</span>
-<span class="sd">    selection across repeated runs and method subgroups.</span>
+<span class="sd">    selection across repeated runs and selector ensembles.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="FeatureSelectionPipeline.__init__">
@@ -117,6 +112,7 @@
         <span class="n">fill</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">random_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">stability_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fold_stability&quot;</span><span class="p">,</span>  <span class="c1"># &quot;selector_agreement&quot;, &quot;fold_stability&quot;, or &quot;all&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the pipeline.</span>
 
@@ -126,24 +122,32 @@
 <span class="sd">            y: Target Series aligned with ``X``.</span>
 <span class="sd">            fs_methods: Feature selectors (identifiers or instances).</span>
 <span class="sd">            merging_strategy: Merging strategy (identifier or instance).</span>
-<span class="sd">            num_repeats: Number of repeats for the pipeline.</span>
+<span class="sd">            num_repeats: Number of cross-validation folds to run.</span>
 <span class="sd">            num_features_to_select: Desired number of features to select.</span>
 <span class="sd">            metrics: Metric functions (identifiers or instances).</span>
 <span class="sd">            task: &#39;classification&#39; or &#39;regression&#39;.</span>
-<span class="sd">            min_group_size: Minimum number of methods in each subgroup.</span>
+<span class="sd">            min_group_size: Minimum number of methods in each ensemble.</span>
 <span class="sd">            fill: If True, enforce exact size after merging.</span>
 <span class="sd">            random_state: Seed for reproducibility.</span>
 <span class="sd">            n_jobs: Parallel jobs (use num_repeats when -1 or None).</span>
+<span class="sd">            stability_mode: Stability metric configuration:</span>
+<span class="sd">                - &quot;selector_agreement&quot;: Stability within ensemble (do selectors agree?)</span>
+<span class="sd">                - &quot;fold_stability&quot;: Stability across CV folds (consistent features?)</span>
+<span class="sd">                - &quot;all&quot;: Include both stability metrics in Pareto optimization</span>
+<span class="sd">                Default: &quot;fold_stability&quot; (most important for robust features)</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If task is invalid or required parameters are missing.</span>
 
 <span class="sd">        Note:</span>
-<span class="sd">            Exactly one of ``data`` or the pair ``(X, y)`` must be provided.</span>
+<span class="sd">            - Exactly one of ``data`` or the pair ``(X, y)`` must be provided.</span>
+<span class="sd">            - Bootstrap is ONLY used by FrequencyBootstrapMerger (merger-specific).</span>
+<span class="sd">              Pipeline-level bootstrap has been removed to avoid redundancy with CV.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># parameters validation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be either &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_X_y</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -154,6 +158,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">=</span> <span class="n">n_jobs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span> <span class="o">=</span> <span class="n">min_group_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fill</span> <span class="o">=</span> <span class="n">fill</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="o">=</span> <span class="n">stability_mode</span>
 
         <span class="c1"># set seed for reproducibility</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
@@ -161,41 +166,39 @@
         <span class="c1"># Keep original specs and also instantiate now for introspection</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fs_method_specs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">fs_methods</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_metric_specs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_merging_spec</span> <span class="o">=</span> <span class="n">merging_strategy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_merging_specs</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">merging_strategy</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">merging_strategy</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="p">[</span><span class="n">merging_strategy</span><span class="p">]</span>
+        <span class="p">)</span>
 
         <span class="c1"># dynamically load classes or instantiate them (initial instances)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fs_method_specs</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_specs</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_merging_spec</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merging_specs</span><span class="p">]</span>
+        <span class="c1"># Backwards-compatible alias when a single merger is used</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multiple_mergers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
 
         <span class="c1"># validate and preparation</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;num_features_to_select must be provided&quot;</span><span class="p">)</span>
-        <span class="c1"># subgroup names are generated in run() after instantiation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span></div>
-
-
-<div class="viewcode-block" id="FeatureSelectionPipeline._validate_task">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._validate_task">[docs]</a>
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_task</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate task string.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            task: Expected &#39;classification&#39; or &#39;regression&#39;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be either &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span></div>
+        <span class="c1"># ensemble selector combinations are generated in run() after instantiation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector_ensembles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_lookup</span> <span class="o">=</span> <span class="p">{}</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._set_seed">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._set_seed">[docs]</a>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Seed numpy/python RNGs for reproducibility.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Seed numpy/python RNGs for reproducibility.</span>
+
+<span class="sd">        Note: This sets the global random state. In parallel execution,</span>
+<span class="sd">        each worker process has its own random state, so this is safe.</span>
+<span class="sd">        PYTHONHASHSEED must be set before Python starts, so we don&#39;t set it here.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PYTHONHASHSEED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
+        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._validate_X_y">
@@ -232,26 +235,51 @@
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._per_repeat_seed">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._per_repeat_seed">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_per_repeat_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_per_repeat_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Derive a per-repeat seed from the top-level seed.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._effective_n_jobs">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._effective_n_jobs">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_n_jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_n_jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return parallel job count capped by number of repeats.&quot;&quot;&quot;</span>
         <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span>
         <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">))</span></div>
 
 
-<div class="viewcode-block" id="FeatureSelectionPipeline._generate_subgroup_names">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._generate_subgroup_names">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_subgroup_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_group_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._merging_requires_bootstrap">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._merging_requires_bootstrap">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_merging_requires_bootstrap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">merger</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True when the given merger asks for bootstrap statistics.</span>
+
+<span class="sd">        NOTE: Bootstrap is ONLY used by FrequencyBootstrapMerger, which has its own</span>
+<span class="sd">        num_bootstrap parameter. Pipeline-level bootstrap has been removed to avoid</span>
+<span class="sd">        redundancy with cross-validation and reduce complexity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">needs_bootstrap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">merger</span><span class="p">,</span> <span class="s2">&quot;needs_bootstrap_merging&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">num_bootstrap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">merger</span><span class="p">,</span> <span class="s2">&quot;num_bootstrap&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">needs_bootstrap</span> <span class="ow">and</span> <span class="n">num_bootstrap</span> <span class="ow">and</span> <span class="n">num_bootstrap</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._should_collect_bootstrap">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._should_collect_bootstrap">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_should_collect_bootstrap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if bootstrap stats should be gathered.</span>
+
+<span class="sd">        Bootstrap is only collected when a merger explicitly requests it</span>
+<span class="sd">        (e.g., FrequencyBootstrapMerger with needs_bootstrap_merging=True).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_merging_requires_bootstrap</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._generate_selector_ensembles">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._generate_selector_ensembles">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_selector_ensembles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_group_size</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate all selector-name combinations with minimum size.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            min_group_size: Minimum subgroup size.</span>
+<span class="sd">            min_group_size: Minimum ensemble size.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of tuples of selector names.</span>
@@ -259,7 +287,7 @@
         <span class="n">fs_method_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">fs_method</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">fs_method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">min_group_size</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Minimum group size of </span><span class="si">{</span><span class="n">min_group_size</span><span class="si">}</span><span class="s2"> exceeds available methods (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span><span class="si">}</span><span class="s2">).&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Minimum ensemble size of </span><span class="si">{</span><span class="n">min_group_size</span><span class="si">}</span><span class="s2"> exceeds available methods (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span><span class="si">}</span><span class="s2">).&quot;</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">combo</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">min_group_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">combo</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
@@ -269,125 +297,323 @@
     <span class="c1"># Public method to run the feature selection pipeline</span>
 <div class="viewcode-block" id="FeatureSelectionPipeline.run">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline.run">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the pipeline and return best merged features.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            (merged_features, best_repeat_idx, best_group_names).</span>
+<span class="sd">            tuple: (selected_features, best_ensemble_name)</span>
+<span class="sd">                - selected_features: List of selected feature names</span>
+<span class="sd">                - best_ensemble_name: Name of the best ensemble (tuple of selector names,</span>
+<span class="sd">                  or (merger_name, selectors) if multiple mergers are used)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_build_ensemble_index</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_run_tracking</span><span class="p">()</span>
 
-        <span class="c1"># Fresh objects for each run to avoid hidden state</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fs_method_specs</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_specs</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_merging_spec</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">result_dicts</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">())]</span>
+        <span class="n">cv_splits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cv_splits</span><span class="p">())</span>
+        <span class="n">parallel_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_folds</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_collect_fold_results</span><span class="p">(</span><span class="n">parallel_results</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">)</span>
 
-        <span class="c1"># Regenerate subgroup names from fresh fs_methods</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_subgroup_names</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span><span class="p">)</span>
+        <span class="n">result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inject_cross_fold_stability</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
+        <span class="n">best_ensemble</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_best_ensemble</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
 
-        <span class="c1"># Reset internal state so that run() always starts fresh</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fs_subsets</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Always refit on full data for best generalization</span>
+        <span class="n">merged_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refit_on_full_data</span><span class="p">(</span><span class="n">best_ensemble</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">merged_full</span><span class="p">,</span> <span class="n">best_ensemble</span><span class="p">)</span></div>
 
-        <span class="n">num_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">()</span>
-        <span class="n">result_dicts</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_metrics</span><span class="p">)]</span>
 
-        <span class="c1"># Ensure we don&#39;t allocate more jobs than repeats</span>
-        <span class="n">n_jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_n_jobs</span><span class="p">()</span>
+    <span class="c1"># ── Run orchestration helpers ──────────────────────────────────────────────</span>
 
-        <span class="k">with</span> <span class="n">parallel_backend</span><span class="p">(</span><span class="s2">&quot;loky&quot;</span><span class="p">,</span> <span class="n">inner_max_num_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>  <span class="c1"># Prevents oversubscription</span>
-            <span class="n">parallel_results</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)(</span>
-                <span class="n">delayed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pipeline_run_for_repeat</span><span class="p">)(</span><span class="n">i</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">)</span>
-            <span class="p">)</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._build_ensemble_index">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._build_ensemble_index">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_ensemble_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enumerate all selector ensemble × merger combinations.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector_ensembles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_selector_ensembles</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_lookup</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">merger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">selectors</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector_ensembles</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="p">(</span><span class="n">merger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">selectors</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiple_mergers</span> <span class="k">else</span> <span class="n">selectors</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_lookup</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">selectors</span></div>
 
-        <span class="c1"># Sort results by repeat index</span>
-        <span class="n">parallel_results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># Now, x[0] is the repeat index</span>
 
-        <span class="c1"># Merge results in a fixed order</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._reset_run_tracking">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._reset_run_tracking">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reset_run_tracking</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear per-run state containers.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fs_subsets</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span> <span class="o">=</span> <span class="p">{}</span></div>
 
-        <span class="k">for</span> <span class="p">(</span>
-            <span class="n">_</span><span class="p">,</span>
-            <span class="n">partial_fs_subsets</span><span class="p">,</span>
-            <span class="n">partial_merged_features</span><span class="p">,</span>
-            <span class="n">partial_result_dicts</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="n">parallel_results</span><span class="p">:</span>
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._execute_folds">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._execute_folds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_folds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run each CV fold, possibly in parallel.&quot;&quot;&quot;</span>
+        <span class="n">n_jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_n_jobs</span><span class="p">()</span>  <span class="c1"># cap jobs by fold count</span>
+        <span class="c1"># Parallelize folds with joblib while pinning inner threads to 1 to avoid oversubscription.</span>
+        <span class="k">with</span> <span class="n">parallel_backend</span><span class="p">(</span><span class="s2">&quot;loky&quot;</span><span class="p">,</span> <span class="n">inner_max_num_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">parallel_results</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)(</span>
+                <span class="n">delayed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pipeline_run_for_fold</span><span class="p">)(</span><span class="n">i</span><span class="p">,</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">parallel_results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># deterministic ordering by fold index</span>
+        <span class="k">return</span> <span class="n">parallel_results</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._collect_fold_results">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._collect_fold_results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collect_fold_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parallel_results</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-fold outputs into unified mappings.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">partial_fs_subsets</span><span class="p">,</span> <span class="n">partial_merged_features</span><span class="p">,</span> <span class="n">partial_result_dicts</span> <span class="ow">in</span> <span class="n">parallel_results</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fs_subsets</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">partial_fs_subsets</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">partial_merged_features</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">dict_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_metrics</span><span class="p">):</span>
-                <span class="n">result_dicts</span><span class="p">[</span><span class="n">dict_idx</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">partial_result_dicts</span><span class="p">[</span><span class="n">dict_idx</span><span class="p">])</span>
-
-        <span class="c1"># Compute Pareto analysis as usual</span>
-        <span class="n">means_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_means</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">)</span>
-        <span class="n">means_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replace_none</span><span class="p">(</span><span class="n">means_list</span><span class="p">)</span>
-        <span class="c1"># pairs = sorted(zip(self.subgroup_names, means_list), key=lambda p: tuple(p[0]))</span>
-        <span class="c1"># self.subgroup_names, means_list = map(list, zip(*pairs))</span>
-        <span class="n">best_group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_pareto</span><span class="p">(</span><span class="n">means_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">)</span>
-        <span class="n">best_group_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_repeat_metrics</span><span class="p">(</span><span class="n">best_group</span><span class="p">,</span> <span class="o">*</span><span class="n">result_dicts</span><span class="p">)</span>
-        <span class="n">best_group_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replace_none</span><span class="p">(</span><span class="n">best_group_metrics</span><span class="p">)</span>
-        <span class="n">best_repeat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_pareto</span><span class="p">(</span><span class="n">best_group_metrics</span><span class="p">,</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">)])</span>
-
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span><span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">best_repeat</span><span class="p">),</span> <span class="n">best_group</span><span class="p">)],</span> <span class="nb">int</span><span class="p">(</span><span class="n">best_repeat</span><span class="p">),</span> <span class="n">best_group</span><span class="p">)</span></div>
+            <span class="k">for</span> <span class="n">dict_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)):</span>
+                <span class="n">result_dicts</span><span class="p">[</span><span class="n">dict_idx</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">partial_result_dicts</span><span class="p">[</span><span class="n">dict_idx</span><span class="p">])</span></div>
 
 
-<div class="viewcode-block" id="FeatureSelectionPipeline._pipeline_run_for_repeat">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._pipeline_run_for_repeat">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_pipeline_run_for_repeat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute one repeat and return partial results tuple.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._select_best_ensemble">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._select_best_ensemble">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_select_best_ensemble</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select best ensemble using single-stage Pareto with consistency metric.</span>
 
-        <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_data</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.20</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
-
-        <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_subset</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
-        <span class="n">merged_features_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_merging</span><span class="p">(</span><span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
-        <span class="n">local_result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_metrics</span><span class="p">(</span><span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
-
-        <span class="c1"># Return repeat index as the first element</span>
-        <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">local_result_dicts</span></div>
-
-
-<div class="viewcode-block" id="FeatureSelectionPipeline._replace_none">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._replace_none">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_replace_none</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace any group with None with a list of -inf.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            metrics: Per-group metric lists.</span>
+<span class="sd">        For each ensemble, computes:</span>
+<span class="sd">        - Mean of each performance metric across folds</span>
+<span class="sd">        - Consistency score (inverse of average std across performance metrics)</span>
+<span class="sd">        - Stability metrics (already computed per ensemble)</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Same shape with None replaced by -inf rows.</span>
+<span class="sd">            Tuple of (best_ensemble_name, best_fold_idx)</span>
+<span class="sd">            Note: best_fold_idx is None when refit_on_full_data=True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="p">(</span>
-                <span class="n">group_metrics</span>
-                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">metric</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">group_metrics</span><span class="p">)</span>
-                <span class="k">else</span> <span class="p">[</span><span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">group_metrics</span><span class="p">)</span>
+        <span class="n">num_performance_metrics</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
+        <span class="n">ensemble_metrics</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">failed_ensembles</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">ensemble</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">:</span>
+            <span class="c1"># Extract all fold results for this ensemble</span>
+            <span class="n">fold_results</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">fold_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">):</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">fold_idx</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">)</span>
+                <span class="c1"># Get performance metrics only (not stability yet)</span>
+                <span class="n">fold_metrics</span> <span class="o">=</span> <span class="p">[</span><span class="n">result_dicts</span><span class="p">[</span><span class="n">m_idx</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">m_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_performance_metrics</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">fold_metrics</span><span class="p">):</span>
+                    <span class="n">fold_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fold_metrics</span><span class="p">)</span>
+
+            <span class="c1"># Check if ensemble failed</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fold_results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">failed_ensembles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ensemble</span><span class="p">)</span>
+                <span class="c1"># Create vector of -inf for failed ensembles</span>
+                <span class="c1"># Length: performance metrics + consistency + stability metrics</span>
+                <span class="n">num_metrics</span> <span class="o">=</span> <span class="n">num_performance_metrics</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">()</span> <span class="o">-</span> <span class="n">num_performance_metrics</span><span class="p">)</span>
+                <span class="n">ensemble_metrics</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)]</span> <span class="o">*</span> <span class="n">num_metrics</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Compute mean and std for each performance metric</span>
+            <span class="n">fold_results_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fold_results</span><span class="p">)</span>  <span class="c1"># shape: (num_folds, num_metrics)</span>
+            <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">fold_results_array</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">stds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">fold_results_array</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Compute consistency score: inverse of average std</span>
+            <span class="c1"># Add small epsilon to avoid division by zero</span>
+            <span class="n">avg_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">stds</span><span class="p">)</span>
+            <span class="n">consistency</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">avg_std</span><span class="p">)</span>
+
+            <span class="c1"># Build metric vector: [mean1, mean2, ..., consistency, stability_metrics...]</span>
+            <span class="n">metric_vector</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">means</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">consistency</span><span class="p">]</span>
+
+            <span class="c1"># Add stability metrics (already aggregated per ensemble, not per fold)</span>
+            <span class="n">stability_start_idx</span> <span class="o">=</span> <span class="n">num_performance_metrics</span>
+            <span class="k">for</span> <span class="n">stability_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">stability_start_idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">()):</span>
+                <span class="c1"># Stability metrics are replicated across folds, so just take first</span>
+                <span class="n">stability_value</span> <span class="o">=</span> <span class="n">result_dicts</span><span class="p">[</span><span class="n">stability_idx</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">metric_vector</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stability_value</span><span class="p">)</span>
+
+            <span class="n">ensemble_metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric_vector</span><span class="p">)</span>
+
+        <span class="c1"># Warn about failed ensembles</span>
+        <span class="k">if</span> <span class="n">failed_ensembles</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2"> ensembles failed to produce valid features&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">failed_ensembles</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Failed ensembles: </span><span class="si">{</span><span class="n">failed_ensembles</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Single Pareto optimization over all metrics</span>
+        <span class="n">best_ensemble</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_pareto</span><span class="p">(</span><span class="n">ensemble_metrics</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">)</span>
+
+        <span class="c1"># Return None for fold index - caller should refit on full data</span>
+        <span class="k">return</span> <span class="n">best_ensemble</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._refit_on_full_data">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._refit_on_full_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_refit_on_full_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble_name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run selectors and merger on full data for the chosen ensemble.&quot;&quot;&quot;</span>
+        <span class="n">selectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_lookup</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ensemble_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">selectors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown ensemble: </span><span class="si">{</span><span class="n">ensemble_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run each selector once on full data</span>
+        <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">feature_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">X_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span>
+        <span class="n">y_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">for</span> <span class="n">fs_method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span><span class="p">:</span>
+            <span class="n">method_name</span> <span class="o">=</span> <span class="n">fs_method</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">scores</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">fs_method</span><span class="o">.</span><span class="n">select_features</span><span class="p">(</span><span class="n">X_full</span><span class="p">,</span> <span class="n">y_full</span><span class="p">)</span>
+            <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">Feature</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span>
+                    <span class="n">score</span><span class="o">=</span><span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">scores</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">selected</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="c1"># Choose appropriate merger (single or by name)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiple_mergers</span><span class="p">:</span>
+            <span class="n">merger_name</span> <span class="o">=</span> <span class="n">ensemble_name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">merger</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">merger_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">merger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_ensemble_features</span><span class="p">(</span>
+            <span class="p">{(</span><span class="mi">0</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span> <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">name</span><span class="p">)]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">selectors</span><span class="p">},</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">selectors</span><span class="p">,</span>
+            <span class="n">merger</span><span class="p">,</span>
+            <span class="n">bootstrap_stats</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._cv_splits">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._cv_splits">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cv_splits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield train/test indices for K-fold CV (stratified when classification).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;classification&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">StratifiedKFold</span>
+
+            <span class="n">cv</span> <span class="o">=</span> <span class="n">StratifiedKFold</span><span class="p">(</span>
+                <span class="n">n_splits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">,</span>
+                <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="k">for</span> <span class="n">group_metrics</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="p">]</span></div>
+            <span class="k">return</span> <span class="n">cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">KFold</span>
+
+            <span class="n">cv</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span>
+                <span class="n">n_splits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">,</span>
+                <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="FeatureSelectionPipeline._split_data">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._split_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_split_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Split data into train/test using stratification when classification.&quot;&quot;&quot;</span>
-        <span class="n">stratify</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;classification&quot;</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span>
-            <span class="n">test_size</span><span class="o">=</span><span class="n">test_size</span><span class="p">,</span>
-            <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
-            <span class="n">stratify</span><span class="o">=</span><span class="n">stratify</span><span class="p">,</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._pipeline_run_for_fold">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._pipeline_run_for_fold">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pipeline_run_for_fold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute one CV fold and return partial results tuple.&quot;&quot;&quot;</span>
+        <span class="c1"># Set seed at the start of each fold worker for reproducibility</span>
+        <span class="c1"># This ensures each parallel worker has consistent random state</span>
+        <span class="n">fold_seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">fold_idx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="n">fold_seed</span><span class="p">)</span>
+
+        <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
+        <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">test_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_subset</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">)</span>
+        <span class="n">feature_names</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">bootstrap_stats</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_bootstrap_stats</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_collect_bootstrap</span><span class="p">()</span>
+            <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
-        <span class="n">train_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">test_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">train_df</span><span class="p">,</span> <span class="n">test_df</span></div>
+        <span class="n">merged_features_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_merging</span><span class="p">(</span>
+            <span class="n">fs_subsets_local</span><span class="p">,</span>
+            <span class="n">fold_idx</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="p">,</span>
+            <span class="n">bootstrap_stats</span><span class="o">=</span><span class="n">bootstrap_stats</span><span class="p">,</span>
+            <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create a fold-level cache for model training to share across ensembles</span>
+        <span class="n">fold_model_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">local_result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_metrics</span><span class="p">(</span>
+            <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">fold_model_cache</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Return fold index as the first element</span>
+        <span class="k">return</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">local_result_dicts</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._compute_bootstrap_stats">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_bootstrap_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_bootstrap_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Collect selection counts across bootstrap resamples for each selector.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+
+        <span class="n">num_bootstrap_attr</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">max</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="s2">&quot;num_bootstrap&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">num_bootstrap</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_bootstrap_attr</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bootstrap_num_samples</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bootstrap</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">num_bootstrap</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">use_scores</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">any</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="s2">&quot;use_scores&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bootstrap_use_scores</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">bootstrap_use_scores</span>
+        <span class="p">)</span>
+
+        <span class="n">X_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span>
+        <span class="n">y_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
+
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data</span><span class="p">)</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">fs_method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span><span class="p">:</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_names</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="n">score_sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_names</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_bootstrap</span><span class="p">):</span>
+                <span class="n">sample_idx</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">)</span>
+                <span class="n">X_boot</span> <span class="o">=</span> <span class="n">X_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span>
+                <span class="n">y_boot</span> <span class="o">=</span> <span class="n">y_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span>
+
+                <span class="n">scores</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">fs_method</span><span class="o">.</span><span class="n">select_features</span><span class="p">(</span><span class="n">X_boot</span><span class="p">,</span> <span class="n">y_boot</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">sel_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sel_idx</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">counts</span><span class="p">[</span><span class="n">sel_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="n">use_scores</span> <span class="ow">and</span> <span class="n">scores</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">score_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                    <span class="n">min_v</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">score_arr</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+                    <span class="n">rng_v</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">score_arr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">min_v</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">1.0</span>
+                    <span class="n">norm_scores</span> <span class="o">=</span> <span class="p">(</span><span class="n">score_arr</span> <span class="o">-</span> <span class="n">min_v</span><span class="p">)</span> <span class="o">/</span> <span class="n">rng_v</span>
+                    <span class="n">score_sums</span><span class="p">[</span><span class="n">sel_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">norm_scores</span><span class="p">[</span><span class="n">sel_idx</span><span class="p">]</span>
+
+            <span class="n">stats</span><span class="p">[</span><span class="n">fs_method</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;counts&quot;</span><span class="p">:</span> <span class="n">counts</span><span class="p">,</span>
+                <span class="s2">&quot;score_sums&quot;</span><span class="p">:</span> <span class="n">score_sums</span><span class="p">,</span>
+                <span class="s2">&quot;n_runs&quot;</span><span class="p">:</span> <span class="n">num_bootstrap</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;_feature_names&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">feature_names</span>
+        <span class="k">return</span> <span class="n">stats</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._compute_subset">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_subset">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_subset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_subset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute selected Feature objects per method for this repeat.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
         <span class="n">X_train</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span>
@@ -414,75 +640,97 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_merging">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_merging</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">fs_subsets_local</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-group features and return mapping for this repeat.&quot;&quot;&quot;</span>
+        <span class="n">fs_subsets_local</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">bootstrap_stats</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">feature_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-ensemble features and return mapping for this repeat.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
         <span class="n">merged_features_local</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">:</span>
-            <span class="n">merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_group_features</span><span class="p">(</span><span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">merged</span><span class="p">:</span>
-                <span class="n">merged_features_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">group</span><span class="p">)]</span> <span class="o">=</span> <span class="n">merged</span>
-            <span class="k">elif</span> <span class="n">verbose</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">group</span><span class="si">}</span><span class="s2"> produced no merged features.&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">merger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategies</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">selectors</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector_ensembles</span><span class="p">:</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_ensemble_features</span><span class="p">(</span>
+                    <span class="n">fs_subsets_local</span><span class="p">,</span>
+                    <span class="n">idx</span><span class="p">,</span>
+                    <span class="n">selectors</span><span class="p">,</span>
+                    <span class="n">merger</span><span class="o">=</span><span class="n">merger</span><span class="p">,</span>
+                    <span class="n">bootstrap_stats</span><span class="o">=</span><span class="n">bootstrap_stats</span><span class="p">,</span>
+                    <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">ensemble_name</span> <span class="o">=</span> <span class="p">(</span><span class="n">merger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">selectors</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiple_mergers</span> <span class="k">else</span> <span class="n">selectors</span>
+                <span class="k">if</span> <span class="n">merged</span><span class="p">:</span>
+                    <span class="n">merged_features_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">ensemble_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">merged</span>
+                <span class="k">elif</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">ensemble_name</span><span class="si">}</span><span class="s2"> produced no merged features.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">merged_features_local</span></div>
 
 
-<div class="viewcode-block" id="FeatureSelectionPipeline._merge_group_features">
-<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._merge_group_features">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_group_features</span><span class="p">(</span>
+<div class="viewcode-block" id="FeatureSelectionPipeline._merge_ensemble_features">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._merge_ensemble_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_ensemble_features</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">fs_subsets_local</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">group</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge features for a specific group of methods.</span>
+        <span class="n">fs_subsets_local</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">selectors</span><span class="p">,</span>
+        <span class="n">merger</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">bootstrap_stats</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">feature_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge features for a specific ensemble of selectors.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            idx: Repeat index.</span>
-<span class="sd">            group: Tuple of selector names.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Merged features (type depends on strategy).</span>
+<span class="sd">        NOTE: Bootstrap is ONLY used by FrequencyBootstrapMerger.</span>
+<span class="sd">        This merger explicitly requests bootstrap stats via needs_bootstrap_merging=True,</span>
+<span class="sd">        and handles all bootstrap aggregation internally.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">group_features</span> <span class="o">=</span> <span class="p">[[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">method</span><span class="p">)]</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">selected</span><span class="p">]</span> <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">group</span><span class="p">]</span>
+        <span class="n">group_features</span> <span class="o">=</span> <span class="p">[[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">method</span><span class="p">)]</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">selected</span><span class="p">]</span> <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">selectors</span><span class="p">]</span>
 
-        <span class="c1"># Determine set-based vs rank-based via method call when available</span>
-        <span class="n">is_set_based_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span><span class="p">,</span> <span class="s2">&quot;is_set_based&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="c1"># Merger-specific bootstrap handling (ONLY FrequencyBootstrapMerger)</span>
+        <span class="k">if</span> <span class="n">bootstrap_stats</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merging_requires_bootstrap</span><span class="p">(</span><span class="n">merger</span><span class="p">):</span>
+            <span class="n">feature_names</span> <span class="o">=</span> <span class="n">feature_names</span> <span class="ow">or</span> <span class="n">bootstrap_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_feature_names&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">merger</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">group_features</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">,</span>
+                <span class="n">fill</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fill</span><span class="p">,</span>
+                <span class="n">group</span><span class="o">=</span><span class="n">selectors</span><span class="p">,</span>
+                <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
+                <span class="n">bootstrap_stats</span><span class="o">=</span><span class="n">bootstrap_stats</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Standard merging for all other mergers</span>
+        <span class="n">is_set_based_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">merger</span><span class="p">,</span> <span class="s2">&quot;is_set_based&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">is_set_based_attr</span><span class="p">):</span>
             <span class="n">is_set_based</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">is_set_based_attr</span><span class="p">())</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_set_based_attr</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
             <span class="n">is_set_based</span> <span class="o">=</span> <span class="n">is_set_based_attr</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">is_set_based</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># default behavior as before</span>
+            <span class="n">is_set_based</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="k">if</span> <span class="n">is_set_based</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">group_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fill</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">merger</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">group_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fill</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">group_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="n">merger</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">group_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._compute_performance_metrics">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_performance_metrics">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_performance_metrics</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">X_train</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">y_train</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
-        <span class="n">X_test</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">y_test</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">fold_cache</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute performance metrics using configured metric methods.</span>
 
+<span class="sd">        Args:</span>
+<span class="sd">            X_train, y_train, X_test, y_test: Train/test data</span>
+<span class="sd">            fold_cache: Dict for caching model training across ensembles in this fold</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            Averaged metric values per configured metric.</span>
+<span class="sd">            List of metric values</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
 
-        <span class="n">shared_results</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">metric_values</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
             <span class="n">aggregator</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s2">&quot;aggregate_from_results&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
@@ -490,14 +738,18 @@
                 <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">))</span>
                 <span class="k">continue</span>
 
+            <span class="c1"># Create cache key: model signature + feature set hash</span>
             <span class="n">signature_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s2">&quot;model_signature&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="n">cache_key</span> <span class="o">=</span> <span class="n">signature_fn</span><span class="p">()</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">signature_fn</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-            <span class="n">results</span> <span class="o">=</span> <span class="n">shared_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">model_sig</span> <span class="o">=</span> <span class="n">signature_fn</span><span class="p">()</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">signature_fn</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">feature_hash</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">X_train</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="s2">&quot;columns&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">id</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">model_sig</span><span class="p">,</span> <span class="n">feature_hash</span><span class="p">)</span> <span class="k">if</span> <span class="n">model_sig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="n">results</span> <span class="o">=</span> <span class="n">fold_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 
             <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">results</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">train_and_predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">shared_results</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
+                    <span class="n">fold_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
 
             <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">aggregator</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">results</span><span class="p">))</span>
 
@@ -508,23 +760,24 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_metrics">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_metrics</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">fs_subsets_local</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">merged_features_local</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">train_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">test_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute and collect performance and stability metrics for subgroups.</span>
+        <span class="n">fs_subsets_local</span><span class="p">,</span>
+        <span class="n">merged_features_local</span><span class="p">,</span>
+        <span class="n">train_data</span><span class="p">,</span>
+        <span class="n">test_data</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">,</span>
+        <span class="n">fold_cache</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute performance and stability metrics for each ensemble.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            fs_subsets_local: Local selected Feature lists per (repeat, method).</span>
-<span class="sd">            merged_features_local: Merged features per (repeat, group).</span>
-<span class="sd">            train_data: Training dataframe.</span>
-<span class="sd">            test_data: Test dataframe.</span>
-<span class="sd">            idx: Repeat index.</span>
+<span class="sd">            fs_subsets_local: Feature subsets per selector</span>
+<span class="sd">            merged_features_local: Merged features per ensemble</span>
+<span class="sd">            train_data, test_data: Train/test splits</span>
+<span class="sd">            idx: Fold index</span>
+<span class="sd">            fold_cache: Shared cache for model training across ensembles</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            List of per-metric dicts keyed by (repeat, group).</span>
+<span class="sd">            List of result dicts (one per metric)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
         <span class="n">num_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">()</span>
@@ -535,8 +788,9 @@
         <span class="n">y_test_full</span> <span class="o">=</span> <span class="n">test_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
         <span class="n">column_positions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">position</span> <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_train</span><span class="o">.</span><span class="n">columns</span><span class="p">)}</span>
 
-        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgroup_names</span><span class="p">:</span>
-            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ensemble_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">:</span>
+            <span class="n">selectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_lookup</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ensemble_name</span><span class="p">,</span> <span class="p">())</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">ensemble_name</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">merged_features_local</span><span class="p">:</span>
                 <span class="k">continue</span>
 
@@ -554,19 +808,19 @@
                 <span class="n">y_train_full</span><span class="p">,</span>
                 <span class="n">X_test_subset</span><span class="p">,</span>
                 <span class="n">y_test_full</span><span class="p">,</span>
+                <span class="n">fold_cache</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">m_idx</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">):</span>
                 <span class="n">local_result_dicts</span><span class="p">[</span><span class="n">m_idx</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
 
-            <span class="n">fs_lists</span> <span class="o">=</span> <span class="p">[[</span><span class="n">f</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">method</span><span class="p">)]</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">selected</span><span class="p">]</span> <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">group</span><span class="p">]</span>
-            <span class="n">stability</span> <span class="o">=</span> <span class="n">compute_stability_metrics</span><span class="p">(</span><span class="n">fs_lists</span><span class="p">)</span> <span class="k">if</span> <span class="n">fs_lists</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">metric_slot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;selector_agreement&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+                <span class="n">fs_lists</span> <span class="o">=</span> <span class="p">[[</span><span class="n">f</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs_subsets_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">method</span><span class="p">)]</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">selected</span><span class="p">]</span> <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">selectors</span><span class="p">]</span>
+                <span class="n">stability</span> <span class="o">=</span> <span class="n">compute_stability_metrics</span><span class="p">(</span><span class="n">fs_lists</span><span class="p">)</span> <span class="k">if</span> <span class="n">fs_lists</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="n">local_result_dicts</span><span class="p">[</span><span class="n">metric_slot</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">stability</span>
+                <span class="n">metric_slot</span> <span class="o">+=</span> <span class="mi">1</span>
 
-            <span class="k">if</span> <span class="n">agreement_flag</span><span class="p">:</span>
-                <span class="n">agreement</span> <span class="o">=</span> <span class="n">diversity_agreement</span><span class="p">(</span><span class="n">fs_lists</span><span class="p">,</span> <span class="n">ordered_features</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span> <span class="k">if</span> <span class="n">fs_lists</span> <span class="k">else</span> <span class="mi">0</span>
-                <span class="n">local_result_dicts</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">)][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">agreement</span>
-                <span class="n">local_result_dicts</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">stability</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">local_result_dicts</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">metric_vals</span><span class="p">)][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">stability</span>
+            <span class="c1"># cross-fold stability is filled later after all folds are known</span>
 
         <span class="k">return</span> <span class="n">local_result_dicts</span></div>
 
@@ -575,35 +829,89 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._calculate_means">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_means</span><span class="p">(</span>
-        <span class="n">result_dicts</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
-        <span class="n">group_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate mean metrics per subgroup across repeats.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            result_dicts: Per-metric dicts keyed by (repeat, group).</span>
-<span class="sd">            group_names: Subgroup names to summarize.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            List of [means per metric] for each subgroup.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result_dicts</span><span class="p">,</span>
+        <span class="n">ensemble_names</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate mean metrics per ensemble across repeats.&quot;&quot;&quot;</span>
         <span class="n">means_list</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">group_names</span><span class="p">:</span>
-            <span class="n">group_means</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ensemble</span> <span class="ow">in</span> <span class="n">ensemble_names</span><span class="p">:</span>
+            <span class="n">ensemble_means</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result_dicts</span><span class="p">:</span>
-                <span class="n">vals</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">group</span><span class="p">]</span>
+                <span class="n">vals</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">ensemble</span><span class="p">]</span>
                 <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-                <span class="n">group_means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
-            <span class="n">means_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">group_means</span><span class="p">)</span>
+                <span class="n">ensemble_means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
+            <span class="n">means_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ensemble_means</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">means_list</span></div>
+
+
+<div class="viewcode-block" id="FeatureSelectionPipeline._inject_cross_fold_stability">
+<a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._inject_cross_fold_stability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject_cross_fold_stability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute stability of merged features across folds for each ensemble.</span>
+
+<span class="sd">        Fold stability is a single value per ensemble (computed across all folds),</span>
+<span class="sd">        but we replicate it for each fold index so it can be used in Pareto selection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;fold_stability&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">result_dicts</span>
+
+        <span class="c1"># Prepare destination dict index</span>
+        <span class="n">dest_idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+            <span class="n">dest_idx</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">stability_dict</span> <span class="o">=</span> <span class="n">result_dicts</span><span class="p">[</span><span class="n">dest_idx</span><span class="p">]</span> <span class="k">if</span> <span class="n">dest_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">ensemble</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">:</span>
+            <span class="n">merged_sets</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span><span class="p">[(</span><span class="n">fold_idx</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">)])</span>
+                <span class="k">for</span> <span class="n">fold_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">fold_idx</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">merged_features</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">merged_sets</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">stability_value</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stability_value</span> <span class="o">=</span> <span class="n">compute_stability_metrics</span><span class="p">([</span><span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">merged_sets</span><span class="p">])</span>
+
+            <span class="c1"># Replicate the cross-fold stability value for each fold</span>
+            <span class="c1"># so it can be accessed with (fold_idx, ensemble) keys</span>
+            <span class="k">for</span> <span class="n">fold_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">):</span>
+                <span class="n">stability_dict</span><span class="p">[(</span><span class="n">fold_idx</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">)]</span> <span class="o">=</span> <span class="n">stability_value</span>
+
+        <span class="k">if</span> <span class="n">dest_idx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">):</span>
+            <span class="n">result_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stability_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result_dicts</span><span class="p">[</span><span class="n">dest_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">stability_dict</span>
+        <span class="k">return</span> <span class="n">result_dicts</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._compute_pareto">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._compute_pareto">[docs]</a>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_pareto</span><span class="p">(</span><span class="n">groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">names</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the name of the winner using Pareto analysis.&quot;&quot;&quot;</span>
-        <span class="n">pareto</span> <span class="o">=</span> <span class="n">ParetoAnalysis</span><span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_pareto</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the name of the winner using Pareto analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            values: List of metric vectors (one per group).</span>
+<span class="sd">            names: Corresponding group names.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Name of the best group according to Pareto dominance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If all groups have failed (all -inf values).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot perform Pareto analysis with no data.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check if all ensembles have completely failed</span>
+        <span class="n">all_failed</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vec</span><span class="p">)</span> <span class="k">for</span> <span class="n">vec</span> <span class="ow">in</span> <span class="n">values</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">all_failed</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;All ensembles failed to produce valid features. &quot;</span>
+                <span class="s2">&quot;Check your feature selector and merging strategy configuration.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">pareto</span> <span class="o">=</span> <span class="n">ParetoAnalysis</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
         <span class="n">pareto_results</span> <span class="o">=</span> <span class="n">pareto</span><span class="o">.</span><span class="n">get_results</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">pareto_results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
 
@@ -612,23 +920,20 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._extract_repeat_metrics">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_repeat_metrics</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">group</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-        <span class="o">*</span><span class="n">result_dicts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a row per repeat for the given group.</span>
-
-<span class="sd">        Missing values remain as None and are later replaced by -inf.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">result_array</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">):</span>  <span class="c1"># &lt;- full range</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">group</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result_dicts</span><span class="p">]</span>
+        <span class="n">ensemble</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">result_dicts</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a row per repeat for the given ensemble.&quot;&quot;&quot;</span>
+        <span class="n">result_array</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">):</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">idx</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result_dicts</span><span class="p">]</span>
             <span class="n">result_array</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result_array</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._load_class">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._load_class">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_load_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">instantiate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">instantiate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve identifiers to classes/instances and optionally instantiate.</span>
 
 <span class="sd">        Args:</span>
@@ -667,22 +972,24 @@
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._num_metrics_total">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._num_metrics_total">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_num_metrics_total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return total number of metrics tracked per group.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_num_metrics_total</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Count performance metrics plus configured stability signals.&quot;&quot;&quot;</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;selector_agreement&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+            <span class="n">extra</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stability_mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;fold_stability&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+            <span class="n">extra</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span> <span class="o">+</span> <span class="n">extra</span></div>
 
-<span class="sd">        Includes performance metrics plus stability and optional agreement.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">agreement_flag</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span></div>
 
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Feature selection pipeline with: merging strategy: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">merging_strategy</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;feature selection methods: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fs_methods</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;number of repeats: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 
 </pre></div>
