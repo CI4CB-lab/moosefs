@@ -110,48 +110,6 @@ New methods can be used directly in the pipeline by passing the class or a corre
 
 ---
 
-## Using the CLI
-
-Once installed, the pipeline can also be run from the command line using:
-
-```bash
-efs-pipeline
-```
-
-This command executes `scripts/main.py` using parameters from `scripts/config.yaml`. Users can specify a different config file:
-
-```bash
-efs-pipeline path/to/your_config.yaml
-```
-
-### Example `config.yaml`
-
-```yaml
-experiment:
-  name: "example_experiment"
-  results_path: "results/"
-  data_path: "data/input_data.csv"
-
-preprocessing:
-  normalize: true
-  handle_missing: true
-
-pipeline:
-  fs_methods: ["f_statistic_selector", "random_forest_selector"]
-  merging_strategy: "union_of_intersections_merger"
-  num_repeats: 5
-  task: "classification"
-  num_features_to_select: 10
-```
-
-### Results
-
-The results are saved in a structured directory under `results/example_experiment/`, including:
-- A **text file** summarizing the pipeline run.
-- A **CSV file** containing the final results.
-
----
-
 ## Code Structure
 
 - **`core/`**: Core modules for data processing, metrics, and stability computation.

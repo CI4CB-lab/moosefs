@@ -28,6 +28,7 @@
 - `diversity_agreement()` function from stability_metrics module
 - `__version__` export from package root (use `importlib.metadata` instead)
 - Pipeline-level bootstrap parameter (bootstrap is now merger-specific via `FrequencyBootstrapMerger`)
+- CLI interface (`efs-pipeline` command) and scripts directory - use the Python API directly
 
 ### Breaking Changes
 
