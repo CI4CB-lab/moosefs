@@ -1,7 +1,7 @@
 # MOOSE-FS
 
-[![tests](https://github.com/arthurbabey/ensemblefs/actions/workflows/tests.yml/badge.svg)](https://github.com/arthurbabey/ensemblefs/actions/workflows/tests.yml)
-[Documentation](https://arthurbabey.github.io/ensemblefs/)
+[![tests](https://github.com/CI4CB-lab/moosefs/actions/workflows/tests.yml/badge.svg)](https://github.com/CI4CB-lab/moosefs/actions/workflows/tests.yml)
+[Documentation](https://CI4CB-lab.github.io/moosefs/)
 
 ## Overview
 
@@ -38,14 +38,14 @@ pip install moose-fs
 To install the package from source, run:
 
 ```bash
-pip install git+https://github.com/arthurbabey/ensemblefs.git
+pip install git+https://github.com/CI4CB-lab/moosefs.git
 ```
 
 Alternatively, clone the repository and install locally:
 
 ```bash
-git clone https://github.com/arthurbabey/ensemblefs.git
-cd ensemblefs
+git clone https://github.com/CI4CB-lab/moosefs.git
+cd moosefs
 pip install .
 ```
 

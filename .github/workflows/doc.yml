@@ -12,6 +12,11 @@ concurrency:
   group: docs-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   build_and_deploy:
     name: Build Docs
