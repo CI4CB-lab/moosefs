@@ -21,7 +21,8 @@ dependencies = [
     "ranky",
     "mrmr_selection",
     "scipy>=1.11",
-    "joblib"
+    "joblib>=1.2",
+    "tqdm",
 ]
 
 classifiers = [
