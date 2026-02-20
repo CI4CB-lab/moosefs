@@ -1,12 +1,16 @@
+import contextlib
 from itertools import combinations
+import os
 import random
+import sys
 from typing import Any, Optional
+import warnings
 
 from joblib import Parallel, delayed, parallel_backend
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
-# tqdm is not used; keep imports minimal
 from .core import Feature, ParetoAnalysis
 from .metrics.stability_metrics import compute_stability_metrics
 from .utils import extract_params, get_class_info
@@ -211,14 +215,38 @@ class FeatureSelectionPipeline:
 
         result_dicts = [{} for _ in range(self._num_metrics_total())]
         cv_splits = list(self._cv_splits())
-        parallel_results = self._execute_folds(cv_splits, verbose)
-        self._collect_fold_results(parallel_results, result_dicts)
 
-        result_dicts = self._inject_cross_fold_stability(result_dicts)
-        best_ensemble, _ = self._select_best_ensemble(result_dicts)
+        with warnings.catch_warnings(), open(os.devnull, "w") as devnull, contextlib.redirect_stderr(devnull):
+            warnings.filterwarnings("ignore")
 
-        # Always refit on full data for best generalization
-        merged_full = self._refit_on_full_data(best_ensemble)
+            # Pin tqdm to stdout so the bar survives the stderr redirect above.
+            pbar = tqdm(
+                total=self.num_repeats + 4,
+                desc="MooSeFS",
+                unit="step",
+                disable=not verbose,
+                file=sys.stdout,
+            )
+            with pbar:
+                parallel_results = self._execute_folds(cv_splits, verbose, pbar)
+
+                pbar.set_description("Collecting results")
+                self._collect_fold_results(parallel_results, result_dicts)
+                pbar.update(1)
+
+                pbar.set_description("Computing stability")
+                result_dicts = self._inject_cross_fold_stability(result_dicts)
+                pbar.update(1)
+
+                pbar.set_description("Selecting best ensemble")
+                best_ensemble, _ = self._select_best_ensemble(result_dicts)
+                pbar.update(1)
+
+                pbar.set_description("Refitting on full data")
+                merged_full = self._refit_on_full_data(best_ensemble)
+                pbar.update(1)
+                pbar.set_description("Done")
+
         return (merged_full, best_ensemble)
 
     # ── Run orchestration helpers ──────────────────────────────────────────────
@@ -239,15 +267,24 @@ class FeatureSelectionPipeline:
         self.fs_subsets = {}
         self.merged_features = {}
 
-    def _execute_folds(self, cv_splits, verbose):
-        """Run each CV fold, possibly in parallel."""
+    def _execute_folds(self, cv_splits, verbose, pbar=None):
+        """Run each CV fold, possibly in parallel, updating pbar as each fold completes."""
         n_jobs = self._effective_n_jobs()  # cap jobs by fold count
         # Parallelize folds with joblib while pinning inner threads to 1 to avoid oversubscription.
+        # return_as="generator_unordered" lets us update the progress bar in real time as folds finish.
         with parallel_backend("loky", inner_max_num_threads=1):
-            parallel_results = Parallel(n_jobs=n_jobs)(
+            fold_gen = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(
                 delayed(self._pipeline_run_for_fold)(i, train_idx, test_idx, verbose)
                 for i, (train_idx, test_idx) in enumerate(cv_splits)
             )
+            parallel_results = []
+            for result in fold_gen:
+                parallel_results.append(result)
+                if pbar is not None:
+                    fold_done = result[0] + 1
+                    pbar.set_description(f"Fold {fold_done}/{len(cv_splits)}")
+                    pbar.update(1)
+
         parallel_results.sort(key=lambda x: x[0])  # deterministic ordering by fold index
         return parallel_results
 
@@ -318,9 +355,11 @@ class FeatureSelectionPipeline:
 
         # Warn about failed ensembles
         if failed_ensembles:
-            print(f"Warning: {len(failed_ensembles)}/{len(self.ensembles)} ensembles failed to produce valid features")
+            tqdm.write(
+                f"Warning: {len(failed_ensembles)}/{len(self.ensembles)} ensembles failed to produce valid features"
+            )
             if len(failed_ensembles) <= 5:
-                print(f"  Failed ensembles: {failed_ensembles}")
+                tqdm.write(f"  Failed ensembles: {failed_ensembles}")
 
         # Single Pareto optimization over all metrics
         best_ensemble = self._compute_pareto(ensemble_metrics, self.ensembles)
@@ -390,36 +429,41 @@ class FeatureSelectionPipeline:
 
     def _pipeline_run_for_fold(self, fold_idx, train_idx, test_idx, verbose):
         """Execute one CV fold and return partial results tuple."""
-        # Set seed at the start of each fold worker for reproducibility
-        # This ensures each parallel worker has consistent random state
-        fold_seed = self._per_repeat_seed(fold_idx)
-        self._set_seed(fold_seed)
+        # Suppress warnings and any stderr output (e.g. tqdm bars from individual selectors like mrmr)
+        # inside loky worker processes, which don't inherit main-process warning filters.
+        warnings.filterwarnings("ignore")
 
-        X_train, X_test = self.X.iloc[train_idx], self.X.iloc[test_idx]
-        y_train, y_test = self.y.iloc[train_idx], self.y.iloc[test_idx]
-        train_data = pd.concat([X_train, y_train], axis=1)
-        test_data = pd.concat([X_test, y_test], axis=1)
+        with open(os.devnull, "w") as devnull, contextlib.redirect_stderr(devnull):
+            # Set seed at the start of each fold worker for reproducibility
+            # This ensures each parallel worker has consistent random state
+            fold_seed = self._per_repeat_seed(fold_idx)
+            self._set_seed(fold_seed)
 
-        fs_subsets_local = self._compute_subset(train_data, fold_idx)
-        feature_names = train_data.drop(columns=[self.target_name]).columns.tolist()
-        bootstrap_stats = (
-            self._compute_bootstrap_stats(train_data, fold_idx, feature_names)
-            if self._should_collect_bootstrap()
-            else None
-        )
-        merged_features_local = self._compute_merging(
-            fs_subsets_local,
-            fold_idx,
-            verbose,
-            bootstrap_stats=bootstrap_stats,
-            feature_names=feature_names,
-        )
+            X_train, X_test = self.X.iloc[train_idx], self.X.iloc[test_idx]
+            y_train, y_test = self.y.iloc[train_idx], self.y.iloc[test_idx]
+            train_data = pd.concat([X_train, y_train], axis=1)
+            test_data = pd.concat([X_test, y_test], axis=1)
 
-        # Create a fold-level cache for model training to share across ensembles
-        fold_model_cache = {}
-        local_result_dicts = self._compute_metrics(
-            fs_subsets_local, merged_features_local, train_data, test_data, fold_idx, fold_model_cache
-        )
+            fs_subsets_local = self._compute_subset(train_data, fold_idx)
+            feature_names = train_data.drop(columns=[self.target_name]).columns.tolist()
+            bootstrap_stats = (
+                self._compute_bootstrap_stats(train_data, fold_idx, feature_names)
+                if self._should_collect_bootstrap()
+                else None
+            )
+            merged_features_local = self._compute_merging(
+                fs_subsets_local,
+                fold_idx,
+                verbose,
+                bootstrap_stats=bootstrap_stats,
+                feature_names=feature_names,
+            )
+
+            # Create a fold-level cache for model training to share across ensembles
+            fold_model_cache = {}
+            local_result_dicts = self._compute_metrics(
+                fs_subsets_local, merged_features_local, train_data, test_data, fold_idx, fold_model_cache
+            )
 
         # Return fold index as the first element
         return fold_idx, fs_subsets_local, merged_features_local, local_result_dicts
@@ -529,7 +573,7 @@ class FeatureSelectionPipeline:
                 if merged:
                     merged_features_local[(idx, ensemble_name)] = merged
                 elif verbose:
-                    print(f"Warning: {ensemble_name} produced no merged features.")
+                    tqdm.write(f"Warning: {ensemble_name} produced no merged features.")
         return merged_features_local
 
     def _merge_ensemble_features(
