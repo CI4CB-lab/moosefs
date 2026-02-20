@@ -71,15 +71,19 @@
            <div itemprop="articleBody">
              
   <h1>Source code for moosefs.feature_selection_pipeline</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">contextlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">combinations</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span><span class="p">,</span> <span class="n">parallel_backend</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
 
-<span class="c1"># tqdm is not used; keep imports minimal</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">Feature</span><span class="p">,</span> <span class="n">ParetoAnalysis</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.metrics.stability_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_stability_metrics</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">extract_params</span><span class="p">,</span> <span class="n">get_class_info</span>
@@ -312,14 +316,38 @@
 
         <span class="n">result_dicts</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_metrics_total</span><span class="p">())]</span>
         <span class="n">cv_splits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cv_splits</span><span class="p">())</span>
-        <span class="n">parallel_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_folds</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_collect_fold_results</span><span class="p">(</span><span class="n">parallel_results</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">)</span>
 
-        <span class="n">result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inject_cross_fold_stability</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
-        <span class="n">best_ensemble</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_best_ensemble</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(),</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">devnull</span><span class="p">,</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">redirect_stderr</span><span class="p">(</span><span class="n">devnull</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Always refit on full data for best generalization</span>
-        <span class="n">merged_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refit_on_full_data</span><span class="p">(</span><span class="n">best_ensemble</span><span class="p">)</span>
+            <span class="c1"># Pin tqdm to stdout so the bar survives the stderr redirect above.</span>
+            <span class="n">pbar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span>
+                <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span> <span class="o">+</span> <span class="mi">4</span><span class="p">,</span>
+                <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;MooSeFS&quot;</span><span class="p">,</span>
+                <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
+                <span class="n">disable</span><span class="o">=</span><span class="ow">not</span> <span class="n">verbose</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">with</span> <span class="n">pbar</span><span class="p">:</span>
+                <span class="n">parallel_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_folds</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">,</span> <span class="n">pbar</span><span class="p">)</span>
+
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s2">&quot;Collecting results&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_collect_fold_results</span><span class="p">(</span><span class="n">parallel_results</span><span class="p">,</span> <span class="n">result_dicts</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s2">&quot;Computing stability&quot;</span><span class="p">)</span>
+                <span class="n">result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inject_cross_fold_stability</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s2">&quot;Selecting best ensemble&quot;</span><span class="p">)</span>
+                <span class="n">best_ensemble</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_best_ensemble</span><span class="p">(</span><span class="n">result_dicts</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s2">&quot;Refitting on full data&quot;</span><span class="p">)</span>
+                <span class="n">merged_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refit_on_full_data</span><span class="p">(</span><span class="n">best_ensemble</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="p">(</span><span class="n">merged_full</span><span class="p">,</span> <span class="n">best_ensemble</span><span class="p">)</span></div>
 
 
@@ -349,15 +377,24 @@
 
 <div class="viewcode-block" id="FeatureSelectionPipeline._execute_folds">
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._execute_folds">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_folds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run each CV fold, possibly in parallel.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_folds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cv_splits</span><span class="p">,</span> <span class="n">verbose</span><span class="p">,</span> <span class="n">pbar</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run each CV fold, possibly in parallel, updating pbar as each fold completes.&quot;&quot;&quot;</span>
         <span class="n">n_jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_n_jobs</span><span class="p">()</span>  <span class="c1"># cap jobs by fold count</span>
         <span class="c1"># Parallelize folds with joblib while pinning inner threads to 1 to avoid oversubscription.</span>
+        <span class="c1"># return_as=&quot;generator_unordered&quot; lets us update the progress bar in real time as folds finish.</span>
         <span class="k">with</span> <span class="n">parallel_backend</span><span class="p">(</span><span class="s2">&quot;loky&quot;</span><span class="p">,</span> <span class="n">inner_max_num_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">parallel_results</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)(</span>
+            <span class="n">fold_gen</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span> <span class="n">return_as</span><span class="o">=</span><span class="s2">&quot;generator_unordered&quot;</span><span class="p">)(</span>
                 <span class="n">delayed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pipeline_run_for_fold</span><span class="p">)(</span><span class="n">i</span><span class="p">,</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">)</span>
             <span class="p">)</span>
+            <span class="n">parallel_results</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">fold_gen</span><span class="p">:</span>
+                <span class="n">parallel_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">pbar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">fold_done</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fold </span><span class="si">{</span><span class="n">fold_done</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="n">parallel_results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># deterministic ordering by fold index</span>
         <span class="k">return</span> <span class="n">parallel_results</span></div>
 
@@ -434,9 +471,11 @@
 
         <span class="c1"># Warn about failed ensembles</span>
         <span class="k">if</span> <span class="n">failed_ensembles</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2"> ensembles failed to produce valid features&quot;</span><span class="p">)</span>
+            <span class="n">tqdm</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">)</span><span class="si">}</span><span class="s2"> ensembles failed to produce valid features&quot;</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">failed_ensembles</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Failed ensembles: </span><span class="si">{</span><span class="n">failed_ensembles</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">tqdm</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Failed ensembles: </span><span class="si">{</span><span class="n">failed_ensembles</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># Single Pareto optimization over all metrics</span>
         <span class="n">best_ensemble</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_pareto</span><span class="p">(</span><span class="n">ensemble_metrics</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensembles</span><span class="p">)</span>
@@ -515,36 +554,41 @@
 <a class="viewcode-back" href="../../feature_selection_pipeline.html#moosefs.feature_selection_pipeline.FeatureSelectionPipeline._pipeline_run_for_fold">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_pipeline_run_for_fold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute one CV fold and return partial results tuple.&quot;&quot;&quot;</span>
-        <span class="c1"># Set seed at the start of each fold worker for reproducibility</span>
-        <span class="c1"># This ensures each parallel worker has consistent random state</span>
-        <span class="n">fold_seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">fold_idx</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="n">fold_seed</span><span class="p">)</span>
+        <span class="c1"># Suppress warnings and any stderr output (e.g. tqdm bars from individual selectors like mrmr)</span>
+        <span class="c1"># inside loky worker processes, which don&#39;t inherit main-process warning filters.</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
 
-        <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
-        <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
-        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">test_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">devnull</span><span class="p">,</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">redirect_stderr</span><span class="p">(</span><span class="n">devnull</span><span class="p">):</span>
+            <span class="c1"># Set seed at the start of each fold worker for reproducibility</span>
+            <span class="c1"># This ensures each parallel worker has consistent random state</span>
+            <span class="n">fold_seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_per_repeat_seed</span><span class="p">(</span><span class="n">fold_idx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_seed</span><span class="p">(</span><span class="n">fold_seed</span><span class="p">)</span>
 
-        <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_subset</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">)</span>
-        <span class="n">feature_names</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="n">bootstrap_stats</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_bootstrap_stats</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_collect_bootstrap</span><span class="p">()</span>
-            <span class="k">else</span> <span class="kc">None</span>
-        <span class="p">)</span>
-        <span class="n">merged_features_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_merging</span><span class="p">(</span>
-            <span class="n">fs_subsets_local</span><span class="p">,</span>
-            <span class="n">fold_idx</span><span class="p">,</span>
-            <span class="n">verbose</span><span class="p">,</span>
-            <span class="n">bootstrap_stats</span><span class="o">=</span><span class="n">bootstrap_stats</span><span class="p">,</span>
-            <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
+            <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
+            <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">test_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="c1"># Create a fold-level cache for model training to share across ensembles</span>
-        <span class="n">fold_model_cache</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">local_result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_metrics</span><span class="p">(</span>
-            <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">fold_model_cache</span>
-        <span class="p">)</span>
+            <span class="n">fs_subsets_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_subset</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">)</span>
+            <span class="n">feature_names</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">bootstrap_stats</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_compute_bootstrap_stats</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_collect_bootstrap</span><span class="p">()</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="n">merged_features_local</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_merging</span><span class="p">(</span>
+                <span class="n">fs_subsets_local</span><span class="p">,</span>
+                <span class="n">fold_idx</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="p">,</span>
+                <span class="n">bootstrap_stats</span><span class="o">=</span><span class="n">bootstrap_stats</span><span class="p">,</span>
+                <span class="n">feature_names</span><span class="o">=</span><span class="n">feature_names</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Create a fold-level cache for model training to share across ensembles</span>
+            <span class="n">fold_model_cache</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">local_result_dicts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_metrics</span><span class="p">(</span>
+                <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span><span class="p">,</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">fold_model_cache</span>
+            <span class="p">)</span>
 
         <span class="c1"># Return fold index as the first element</span>
         <span class="k">return</span> <span class="n">fold_idx</span><span class="p">,</span> <span class="n">fs_subsets_local</span><span class="p">,</span> <span class="n">merged_features_local</span><span class="p">,</span> <span class="n">local_result_dicts</span></div>
@@ -663,7 +707,7 @@
                 <span class="k">if</span> <span class="n">merged</span><span class="p">:</span>
                     <span class="n">merged_features_local</span><span class="p">[(</span><span class="n">idx</span><span class="p">,</span> <span class="n">ensemble_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">merged</span>
                 <span class="k">elif</span> <span class="n">verbose</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">ensemble_name</span><span class="si">}</span><span class="s2"> produced no merged features.&quot;</span><span class="p">)</span>
+                    <span class="n">tqdm</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">ensemble_name</span><span class="si">}</span><span class="s2"> produced no merged features.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">merged_features_local</span></div>
 
 
