@@ -3,8 +3,8 @@ from typing import Any, Optional
 from joblib import hash as joblib_hash
 import numpy as np
 from sklearn.ensemble import (
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
+    HistGradientBoostingClassifier,
+    HistGradientBoostingRegressor,
     RandomForestClassifier,
     RandomForestRegressor,
 )
@@ -63,12 +63,12 @@ class BaseMetric:
             "classification": {
                 "Random Forest": RandomForestClassifier(n_jobs=1),
                 "Logistic Regression": LogisticRegression(max_iter=1000),
-                "Gradient Boosting": GradientBoostingClassifier(),
+                "Hist Gradient Boosting": HistGradientBoostingClassifier(),
             },
             "regression": {
                 "Random Forest": RandomForestRegressor(n_jobs=1),
                 "Linear Regression": LinearRegression(),
-                "Gradient Boosting": GradientBoostingRegressor(),
+                "Hist Gradient Boosting": HistGradientBoostingRegressor(),
             },
         }[self.task]
 
