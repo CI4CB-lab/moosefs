@@ -76,8 +76,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="nb">hash</span> <span class="k">as</span> <span class="n">joblib_hash</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">GradientBoostingClassifier</span><span class="p">,</span>
-    <span class="n">GradientBoostingRegressor</span><span class="p">,</span>
+    <span class="n">HistGradientBoostingClassifier</span><span class="p">,</span>
+    <span class="n">HistGradientBoostingRegressor</span><span class="p">,</span>
     <span class="n">RandomForestClassifier</span><span class="p">,</span>
     <span class="n">RandomForestRegressor</span><span class="p">,</span>
 <span class="p">)</span>
@@ -146,12 +146,12 @@
             <span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="p">{</span>
                 <span class="s2">&quot;Random Forest&quot;</span><span class="p">:</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                 <span class="s2">&quot;Logistic Regression&quot;</span><span class="p">:</span> <span class="n">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">),</span>
-                <span class="s2">&quot;Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">GradientBoostingClassifier</span><span class="p">(),</span>
+                <span class="s2">&quot;Hist Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">HistGradientBoostingClassifier</span><span class="p">(),</span>
             <span class="p">},</span>
             <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="p">{</span>
                 <span class="s2">&quot;Random Forest&quot;</span><span class="p">:</span> <span class="n">RandomForestRegressor</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                 <span class="s2">&quot;Linear Regression&quot;</span><span class="p">:</span> <span class="n">LinearRegression</span><span class="p">(),</span>
-                <span class="s2">&quot;Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">GradientBoostingRegressor</span><span class="p">(),</span>
+                <span class="s2">&quot;Hist Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">HistGradientBoostingRegressor</span><span class="p">(),</span>
             <span class="p">},</span>
         <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">]</span></div>
 
