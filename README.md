@@ -1,6 +1,7 @@
 # MOOSE-FS
 
 [![tests](https://github.com/CI4CB-lab/moosefs/actions/workflows/tests.yml/badge.svg)](https://github.com/CI4CB-lab/moosefs/actions/workflows/tests.yml)
+[![DOI](https://zenodo.org/badge/891944962.svg)](https://doi.org/10.5281/zenodo.19205750)
 [Documentation](https://CI4CB-lab.github.io/moosefs/)
 
 ## Overview
