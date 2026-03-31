@@ -293,6 +293,13 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Minimum ensemble size of </span><span class="si">{</span><span class="n">min_group_size</span><span class="si">}</span><span class="s2"> exceeds available methods (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span><span class="si">}</span><span class="s2">).&quot;</span>
             <span class="p">)</span>
+        <span class="k">if</span> <span class="n">min_group_size</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;min_group_size (</span><span class="si">{</span><span class="n">min_group_size</span><span class="si">}</span><span class="s2">) equals the number of selectors (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span><span class="si">}</span><span class="s2">), &quot;</span>
+                <span class="s2">&quot;so only one ensemble is possible. No group comparison will be performed.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">combo</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">min_group_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">combo</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">fs_method_names</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
         <span class="p">]</span></div>
