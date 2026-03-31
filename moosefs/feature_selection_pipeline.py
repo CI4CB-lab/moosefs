@@ -195,6 +195,13 @@ class FeatureSelectionPipeline:
             raise ValueError(
                 f"Minimum ensemble size of {min_group_size} exceeds available methods ({len(fs_method_names)})."
             )
+        if min_group_size == len(fs_method_names):
+            warnings.warn(
+                f"min_group_size ({min_group_size}) equals the number of selectors ({len(fs_method_names)}), "
+                "so only one ensemble is possible. No group comparison will be performed.",
+                UserWarning,
+                stacklevel=3,
+            )
         return [
             combo for r in range(min_group_size, len(fs_method_names) + 1) for combo in combinations(fs_method_names, r)
         ]
