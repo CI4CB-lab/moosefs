@@ -105,3 +105,46 @@ def test_big_data(big):
     ]
     # order of groups with equal scalar (-4) is lexicographic
     assert ranked == expected
+
+
+# ------------------------------------------------------------------ utopia flag tests
+def test_utopia_flag_not_set_when_pareto_decides(sample):
+    """Pareto dominance produces a unique winner — utopia tie-break must NOT fire."""
+    data, names = sample
+    p = ParetoAnalysis(data, names)
+    p.get_results()
+    assert p.utopia_tiebreak_used is False
+    assert p.n_tied == 0
+
+
+def test_utopia_flag_set_when_all_tied(same):
+    """All groups identical — Pareto cannot differentiate, utopia MUST fire."""
+    data, names = same
+    p = ParetoAnalysis(data, names)
+    p.get_results()
+    assert p.utopia_tiebreak_used is True
+    assert p.n_tied == len(names)
+
+
+def test_utopia_flag_set_with_partial_tie():
+    """Top two groups tied on scalar, third clearly worse — utopia fires for the top tie only."""
+    # Group A and Group B are incomparable (each better on one metric), Group C is dominated by both.
+    data = [
+        [10, 1],  # Group A: better on metric 0
+        [1, 10],  # Group B: better on metric 1
+        [0, 0],  # Group C: dominated by both
+    ]
+    names = ["Group A", "Group B", "Group C"]
+    p = ParetoAnalysis(data, names)
+    p.get_results()
+    assert p.utopia_tiebreak_used is True
+    assert p.n_tied == 2
+
+
+def test_utopia_flag_not_set_for_big_data_with_clear_winner(big):
+    """big fixture has a unique top group (Group 10, scalar=9) — no utopia needed."""
+    data, names = big
+    p = ParetoAnalysis(data, names)
+    p.get_results()
+    assert p.utopia_tiebreak_used is False
+    assert p.n_tied == 0

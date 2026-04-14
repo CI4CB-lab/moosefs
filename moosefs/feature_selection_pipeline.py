@@ -812,6 +812,14 @@ class FeatureSelectionPipeline:
 
         pareto = ParetoAnalysis(values, names)
         pareto_results = pareto.get_results()
+
+        if pareto.utopia_tiebreak_used:
+            tqdm.write(
+                f"[MooSeFS] Pareto tie-break: {pareto.n_tied}/{len(values)} ensembles "
+                f"shared the top Pareto score — winner selected by utopia-point distance. "
+                f"Consider reducing the number of Pareto dimensions or ensembles."
+            )
+
         return pareto_results[0][0]
 
     def _extract_repeat_metrics(

@@ -36,6 +36,11 @@ class ParetoAnalysis:
             for g, vec in zip(group_names, data)
         ]
 
+        # Set to True when utopia-distance tie-breaking was needed to pick the winner,
+        # i.e. Pareto dominance alone could not differentiate the top ensembles.
+        self.utopia_tiebreak_used: bool = False
+        self.n_tied: int = 0  # number of ensembles that shared the top Pareto scalar
+
     def _dominate_count(self, i: int) -> int:
         g = self.data[i]
         return sum(
@@ -72,6 +77,9 @@ class ParetoAnalysis:
         tied_rows = [r for r in self.results if r[3] == top_scalar]
 
         if len(tied_rows) > 1:
+            self.utopia_tiebreak_used = True
+            self.n_tied = len(tied_rows)
+
             tied_data = np.vstack([r[4] for r in tied_rows], dtype=float)
 
             # Handle -inf values: replace with large negative for stable scaling
