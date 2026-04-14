@@ -964,6 +964,14 @@
 
         <span class="n">pareto</span> <span class="o">=</span> <span class="n">ParetoAnalysis</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
         <span class="n">pareto_results</span> <span class="o">=</span> <span class="n">pareto</span><span class="o">.</span><span class="n">get_results</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">pareto</span><span class="o">.</span><span class="n">utopia_tiebreak_used</span><span class="p">:</span>
+            <span class="n">tqdm</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[MooSeFS] Pareto tie-break: </span><span class="si">{</span><span class="n">pareto</span><span class="o">.</span><span class="n">n_tied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="si">}</span><span class="s2"> ensembles &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;shared the top Pareto score — winner selected by utopia-point distance. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Consider reducing the number of Pareto dimensions or ensembles.&quot;</span>
+            <span class="p">)</span>
+
         <span class="k">return</span> <span class="n">pareto_results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
 
 

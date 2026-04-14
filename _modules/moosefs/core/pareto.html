@@ -111,7 +111,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">[</span><span class="n">g</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">vec</span><span class="p">]</span>  <span class="c1"># vec = data[i]</span>
             <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">vec</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">group_names</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-        <span class="p">]</span></div>
+        <span class="p">]</span>
+
+        <span class="c1"># Set to True when utopia-distance tie-breaking was needed to pick the winner,</span>
+        <span class="c1"># i.e. Pareto dominance alone could not differentiate the top ensembles.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">utopia_tiebreak_used</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_tied</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># number of ensembles that shared the top Pareto scalar</span></div>
 
 
 <div class="viewcode-block" id="ParetoAnalysis._dominate_count">
@@ -158,6 +163,9 @@
         <span class="n">tied_rows</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="n">top_scalar</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tied_rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">utopia_tiebreak_used</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_tied</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tied_rows</span><span class="p">)</span>
+
             <span class="n">tied_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">r</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">tied_rows</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
             <span class="c1"># Handle -inf values: replace with large negative for stable scaling</span>
