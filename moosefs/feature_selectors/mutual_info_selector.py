@@ -41,5 +41,5 @@ class MutualInfoSelector(FeatureSelector):
         }.get(self.task)
         if mutual_info_func is None:
             raise ValueError("Task must be 'classification' or 'regression'.")
-        scores = mutual_info_func(X, y)
+        scores = mutual_info_func(X, y, **self.kwargs)
         return scores
