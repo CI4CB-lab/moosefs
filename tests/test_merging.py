@@ -238,6 +238,56 @@ def test_borda_big(borda_merger):
     assert result == expected_result
 
 
+def test_borda_misaligned_subsets(borda_merger):
+    # Selectors select different features: merging must align by name,
+    # not by list position, and features absent from the first subset
+    # must still be able to win.
+    subsets = [
+        [Feature("x", 10), Feature("y", 5), Feature("z", 1)],
+        [Feature("x", 9), Feature("w", 8), Feature("y", 2)],
+    ]
+    result = borda_merger.merge(subsets, num_features_to_select=3)
+    # Ranks: x -> (1, 1), y -> (2, 3), w -> (missing=4, 2), z -> (3, missing=4)
+    assert result == ["x", "y", "w"]
+
+
+def test_borda_single_subset_sorted_by_score(borda_merger):
+    subsets = [[Feature("A", 6), Feature("B", 10), Feature("C", 8)]]
+    result = borda_merger.merge(subsets, num_features_to_select=3)
+    assert result == ["B", "C", "A"]
+
+
+def test_arithmetic_mean_misaligned_subsets(arithmetic_mean_merger):
+    subsets = [
+        [Feature("x", 10), Feature("y", 6), Feature("z", 2)],
+        [Feature("y", 9), Feature("z", 8), Feature("w", 1)],
+    ]
+    # Normalized: x -> (1, 0), y -> (0.5, 1), z -> (0, 0.875), w -> (0, 0)
+    result = arithmetic_mean_merger.merge(subsets, num_features_to_select=2)
+    assert result == ["y", "x"]
+
+
+def test_l2norm_misaligned_subsets(l2norm_merger):
+    subsets = [
+        [Feature("x", 10), Feature("y", 6), Feature("z", 2)],
+        [Feature("y", 9), Feature("z", 8), Feature("w", 1)],
+    ]
+    # Normalized: x -> (1, 0), y -> (0.5, 1), z -> (0, 0.875), w -> (0, 0)
+    result = l2norm_merger.merge(subsets, num_features_to_select=2)
+    assert result == ["y", "x"]
+
+
+def test_arithmetic_mean_normalizes_selector_scales(arithmetic_mean_merger):
+    # Selector 1 scores in the thousands, selector 2 in [0, 1]: without
+    # per-selector normalization, selector 1 would dominate and "a" would win.
+    subsets = [
+        [Feature("a", 1000.0), Feature("b", 999.0), Feature("c", 0.0)],
+        [Feature("a", 0.0), Feature("b", 1.0), Feature("c", 0.5)],
+    ]
+    result = arithmetic_mean_merger.merge(subsets, num_features_to_select=3)
+    assert result[0] == "b"
+
+
 def test_l2norm_basic_functionality(l2norm_merger):
     subsets = [
         [Feature("A", 1), Feature("B", 2), Feature("C", 3)],

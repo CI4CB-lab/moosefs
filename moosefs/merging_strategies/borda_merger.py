@@ -21,6 +21,10 @@ class BordaMerger(MergingStrategy):
     def merge(self, subsets: list, num_features_to_select: int, **kwargs) -> list:
         """Merge by Borda and return top-k names.
 
+        Subsets are aligned by feature name, so selectors may contribute
+        different feature sets. A feature missing from a selector's subset is
+        ranked worst for that selector.
+
         Args:
             subsets: Feature lists (one list per selector).
             num_features_to_select: Number of names to return.
@@ -30,12 +34,10 @@ class BordaMerger(MergingStrategy):
         """
         self._validate_input(subsets)
 
-        if len(subsets) == 1:
-            return [feature.name for feature in subsets[0]][:num_features_to_select]
+        feature_names, scores = self._aligned_scores(subsets)
 
-        # Extract feature names (from the first subset) and scores
-        feature_names = [feature.name for feature in subsets[0]]
-        scores = np.array([[feature.score for feature in subset] for subset in subsets]).T
+        # Missing features rank worst for that selector.
+        scores = np.where(np.isnan(scores), -np.inf, scores)
 
         # Apply Borda count method
         scores_merged = borda(m=scores, **self.kwargs)
