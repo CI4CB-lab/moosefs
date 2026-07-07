@@ -99,6 +99,35 @@ def test_merge_fill(union_of_intersections):
     assert len(result) == 4
 
 
+def test_merge_fill_uses_within_subset_normalization(union_of_intersections):
+    # Core is empty, so fill must pick the best feature of each selector.
+    # Scores are min-max normalized within each subset: "x" and "z" both
+    # normalize to 1.0 despite living on wildly different scales.
+    subsets = [
+        [Feature("x", 100.0), Feature("y", 99.0)],
+        [Feature("z", 0.02), Feature("w", 0.01)],
+    ]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert result == {"x", "z"}
+
+
+def test_merge_fill_ragged_subsets(union_of_intersections):
+    # Subsets of different lengths must merge without error.
+    subsets = [
+        [Feature("a", 3.0), Feature("b", 2.0), Feature("c", 1.0)],
+        [Feature("b", 5.0), Feature("d", 4.0)],
+    ]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert "b" in result  # core feature
+    assert len(result) == 2
+
+
+def test_single_subset_fill(union_of_intersections):
+    subsets = [[Feature("A", 1.0), Feature("B", 3.0), Feature("C", 2.0)]]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert result == {"B", "C"}
+
+
 def test_borda_basic_functionality(borda_merger):
     subsets = [
         [Feature("A", 10), Feature("B", 8), Feature("C", 6)],
