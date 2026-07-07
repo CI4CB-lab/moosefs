@@ -997,7 +997,9 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            input: Identifier or instance of a selector/merger/metric.</span>
-<span class="sd">            instantiate: If True, instantiate using extracted parameters.</span>
+<span class="sd">            instantiate: If True, instantiate string identifiers using</span>
+<span class="sd">                extracted pipeline parameters. Instances are returned as-is</span>
+<span class="sd">                so user-provided configuration is preserved.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Class or instance.</span>
@@ -1011,21 +1013,14 @@
                 <span class="n">init_params</span> <span class="o">=</span> <span class="n">extract_params</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
                 <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">init_params</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">cls</span>
-        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="s2">&quot;select_features&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="s2">&quot;merge&quot;</span><span class="p">):</span>
-            <span class="c1"># Assumes valid instance if it has a &#39;select_features&#39; or &#39;merge&#39; method.</span>
-            <span class="k">if</span> <span class="n">instantiate</span><span class="p">:</span>
-                <span class="c1"># Best-effort: re-instantiate using the class and pipeline params</span>
-                <span class="bp">cls</span> <span class="o">=</span> <span class="nb">input</span><span class="o">.</span><span class="vm">__class__</span>
-                <span class="n">init_params</span> <span class="o">=</span> <span class="n">extract_params</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="p">[])</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">init_params</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="c1"># Fallback to returning the same instance if re-instantiation fails</span>
-                    <span class="k">return</span> <span class="nb">input</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="s2">&quot;select_features&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="s2">&quot;merge&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="s2">&quot;compute&quot;</span><span class="p">):</span>
+            <span class="c1"># Assumes valid instance if it exposes a selector (&#39;select_features&#39;),</span>
+            <span class="c1"># merger (&#39;merge&#39;), or metric (&#39;compute&#39;) interface.</span>
             <span class="k">return</span> <span class="nb">input</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Input must be a string identifier or a valid instance of a feature selector or merging strategy.&quot;</span>
+                <span class="s2">&quot;Input must be a string identifier or a valid instance of a &quot;</span>
+                <span class="s2">&quot;feature selector, merging strategy, or metric.&quot;</span>
             <span class="p">)</span></div>
 
 

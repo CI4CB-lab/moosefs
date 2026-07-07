@@ -101,25 +101,24 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the top‑k feature names after arithmetic-mean aggregation.</span>
 
+<span class="sd">        Subsets are aligned by feature name and each selector&#39;s scores are</span>
+<span class="sd">        min-max normalized before averaging, so selectors may contribute</span>
+<span class="sd">        different feature sets on different score scales. Features missing</span>
+<span class="sd">        from a selector&#39;s subset get no credit from it.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            subsets: Feature lists (one list per selector).</span>
 <span class="sd">            num_features_to_select: Number of names to return.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Feature names sorted by mean score.</span>
+<span class="sd">            Feature names sorted by mean normalized score.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_input</span><span class="p">(</span><span class="n">subsets</span><span class="p">)</span>
 
-        <span class="c1"># Shortcut if only one selector supplied</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">subsets</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">subsets</span><span class="p">[</span><span class="mi">0</span><span class="p">]][:</span><span class="n">num_features_to_select</span><span class="p">]</span>
+        <span class="n">feature_names</span><span class="p">,</span> <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aligned_scores</span><span class="p">(</span><span class="n">subsets</span><span class="p">)</span>
 
-        <span class="n">feature_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">subsets</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
-        <span class="c1"># shape: (n_features, n_selectors)</span>
-        <span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">f</span><span class="o">.</span><span class="n">score</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subsets</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
-
-        <span class="c1"># Arithmetic mean across selectors</span>
-        <span class="n">scores_merged</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Arithmetic mean of per-selector normalized scores</span>
+        <span class="n">scores_merged</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize_scores</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Lower score ⇒ higher rank (same convention as Borda)</span>
         <span class="n">sorted_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">feature_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">scores_merged</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;stable&quot;</span><span class="p">)]</span>

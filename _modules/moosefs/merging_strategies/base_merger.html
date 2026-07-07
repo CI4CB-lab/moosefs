@@ -71,7 +71,9 @@
            <div itemprop="articleBody">
              
   <h1>Source code for moosefs.merging_strategies.base_merger</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">..core.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">Feature</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">Feature</span>
 
 
 <div class="viewcode-block" id="MergingStrategy">
@@ -127,6 +129,64 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">is_rank_based</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if the strategy is rank-based.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy_type</span> <span class="o">==</span> <span class="s2">&quot;rank-based&quot;</span></div>
+
+
+<div class="viewcode-block" id="MergingStrategy._aligned_scores">
+<a class="viewcode-back" href="../../../mergers.html#moosefs.merging_strategies.base_merger.MergingStrategy._aligned_scores">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_aligned_scores</span><span class="p">(</span><span class="n">subsets</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Align subsets by feature name into a score matrix.</span>
+
+<span class="sd">        Subsets may contain different features in different orders (e.g. each</span>
+<span class="sd">        selector&#39;s top-k), so scores must be matched by name, never by</span>
+<span class="sd">        position.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subsets: List of Feature lists (one list per selector).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (names, matrix): feature names in first-appearance order across</span>
+<span class="sd">            subsets, and a float matrix of shape (n_features, n_subsets) with</span>
+<span class="sd">            NaN where a selector did not score the feature.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">names</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">positions</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">subset</span> <span class="ow">in</span> <span class="n">subsets</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">subset</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">feature</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">:</span>
+                    <span class="n">positions</span><span class="p">[</span><span class="n">feature</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+                    <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feature</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">subsets</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">subset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">subsets</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">subset</span><span class="p">:</span>
+                <span class="n">matrix</span><span class="p">[</span><span class="n">positions</span><span class="p">[</span><span class="n">feature</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">score</span>
+        <span class="k">return</span> <span class="n">names</span><span class="p">,</span> <span class="n">matrix</span></div>
+
+
+<div class="viewcode-block" id="MergingStrategy._normalize_scores">
+<a class="viewcode-back" href="../../../mergers.html#moosefs.merging_strategies.base_merger.MergingStrategy._normalize_scores">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_scores</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Min-max normalize each column (selector) over its present values.</span>
+
+<span class="sd">        Selector scores live on incomparable scales (importances, |coefs|,</span>
+<span class="sd">        mutual information), so each column is scaled to [0, 1] before</span>
+<span class="sd">        aggregation. Missing entries (NaN) become 0 so features a selector</span>
+<span class="sd">        did not score get no credit from it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">normed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">present</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">matrix</span><span class="p">[:,</span> <span class="n">col</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">present</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">[</span><span class="n">present</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+            <span class="n">min_v</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">span</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">min_v</span>
+            <span class="k">if</span> <span class="n">span</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">span</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">normed</span><span class="p">[</span><span class="n">present</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">-</span> <span class="n">min_v</span><span class="p">)</span> <span class="o">/</span> <span class="n">span</span>
+        <span class="k">return</span> <span class="n">normed</span></div>
 
 
 <div class="viewcode-block" id="MergingStrategy._validate_input">

@@ -54,6 +54,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy.merge"><code class="docutils literal notranslate"><span class="pre">MergingStrategy.merge()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy.is_set_based"><code class="docutils literal notranslate"><span class="pre">MergingStrategy.is_set_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy.is_rank_based"><code class="docutils literal notranslate"><span class="pre">MergingStrategy.is_rank_based()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy._aligned_scores"><code class="docutils literal notranslate"><span class="pre">MergingStrategy._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy._normalize_scores"><code class="docutils literal notranslate"><span class="pre">MergingStrategy._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.base_merger.MergingStrategy._validate_input"><code class="docutils literal notranslate"><span class="pre">MergingStrategy._validate_input()</span></code></a></li>
 </ul>
 </li>
@@ -61,6 +63,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger.name"><code class="docutils literal notranslate"><span class="pre">BordaMerger.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger.__init__"><code class="docutils literal notranslate"><span class="pre">BordaMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger.merge"><code class="docutils literal notranslate"><span class="pre">BordaMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">BordaMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">BordaMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">BordaMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">BordaMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.borda_merger.BordaMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">BordaMerger.is_set_based()</span></code></a></li>
@@ -70,6 +74,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger.name"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger.__init__"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger.merge"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">UnionOfIntersectionsMerger.is_set_based()</span></code></a></li>
@@ -79,6 +85,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.name"><code class="docutils literal notranslate"><span class="pre">L2NormMerger.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.__init__"><code class="docutils literal notranslate"><span class="pre">L2NormMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.merge"><code class="docutils literal notranslate"><span class="pre">L2NormMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">L2NormMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">L2NormMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">L2NormMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">L2NormMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">L2NormMerger.is_set_based()</span></code></a></li>
@@ -88,6 +96,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.name"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.__init__"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.merge"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">ArithmeticMeanMerger.is_set_based()</span></code></a></li>
@@ -96,6 +106,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger.__init__"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger.merge"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">ConsensusMerger.is_set_based()</span></code></a></li>
@@ -105,6 +117,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger.name"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger.__init__"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger.__init__()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger.merge"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger.merge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._aligned_scores"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger._aligned_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._normalize_scores"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger._normalize_scores()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._validate_input"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger._validate_input()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger.is_rank_based"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger.is_rank_based()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger.is_set_based"><code class="docutils literal notranslate"><span class="pre">FrequencyBootstrapMerger.is_set_based()</span></code></a></li>
@@ -199,6 +213,38 @@ the per-selector outputs.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.base_merger.MergingStrategy._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/base_merger.html#MergingStrategy._aligned_scores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.base_merger.MergingStrategy._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.base_merger.MergingStrategy._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/base_merger.html#MergingStrategy._normalize_scores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.base_merger.MergingStrategy._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id1"><span class="problematic" id="id2">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.merging_strategies.base_merger.MergingStrategy._validate_input">
 <span class="sig-name descname"><span class="pre">_validate_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/base_merger.html#MergingStrategy._validate_input"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.base_merger.MergingStrategy._validate_input" title="Link to this definition"></a></dt>
 <dd><p>Validate that <code class="docutils literal notranslate"><span class="pre">subsets</span></code> contains Feature objects.</p>
@@ -239,6 +285,9 @@ the per-selector outputs.</p>
 <dt class="sig sig-object py" id="moosefs.merging_strategies.borda_merger.BordaMerger.merge">
 <span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features_to_select</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/borda_merger.html#BordaMerger.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.borda_merger.BordaMerger.merge" title="Link to this definition"></a></dt>
 <dd><p>Merge by Borda and return top-k names.</p>
+<p>Subsets are aligned by feature name, so selectors may contribute
+different feature sets. A feature missing from a selector’s subset is
+ranked worst for that selector.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -250,6 +299,38 @@ the per-selector outputs.</p>
 <dd class="field-even"><p>Feature names sorted by merged Borda scores.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.borda_merger.BordaMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.borda_merger.BordaMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.borda_merger.BordaMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.borda_merger.BordaMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id3"><span class="problematic" id="id4">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -324,6 +405,38 @@ the per-selector outputs.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id5"><span class="problematic" id="id6">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._validate_input">
 <span class="sig-name descname"><span class="pre">_validate_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.union_of_intersections_merger.UnionOfIntersectionsMerger._validate_input" title="Link to this definition"></a></dt>
 <dd><p>Validate that <code class="docutils literal notranslate"><span class="pre">subsets</span></code> contains Feature objects.</p>
@@ -376,6 +489,10 @@ the per-selector outputs.</p>
 <dt class="sig sig-object py" id="moosefs.merging_strategies.l2_norm_merger.L2NormMerger.merge">
 <span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features_to_select</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/l2_norm_merger.html#L2NormMerger.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger.merge" title="Link to this definition"></a></dt>
 <dd><p>Return the top‑k feature names after L2-norm aggregation.</p>
+<p>Subsets are aligned by feature name and each selector’s scores are
+min-max normalized before aggregation, so selectors may contribute
+different feature sets on different score scales. Features missing
+from a selector’s subset get no credit from it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -387,6 +504,38 @@ the per-selector outputs.</p>
 <dd class="field-even"><p>Feature names sorted by aggregated L2 score.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.l2_norm_merger.L2NormMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.l2_norm_merger.L2NormMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.l2_norm_merger.L2NormMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id7"><span class="problematic" id="id8">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -442,6 +591,10 @@ the per-selector outputs.</p>
 <dt class="sig sig-object py" id="moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.merge">
 <span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features_to_select</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/moosefs/merging_strategies/arithmetic_mean_merger.html#ArithmeticMeanMerger.merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger.merge" title="Link to this definition"></a></dt>
 <dd><p>Return the top‑k feature names after arithmetic-mean aggregation.</p>
+<p>Subsets are aligned by feature name and each selector’s scores are
+min-max normalized before averaging, so selectors may contribute
+different feature sets on different score scales. Features missing
+from a selector’s subset get no credit from it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -450,9 +603,41 @@ the per-selector outputs.</p>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Feature names sorted by mean score.</p>
+<dd class="field-even"><p>Feature names sorted by mean normalized score.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.arithmetic_mean_merger.ArithmeticMeanMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id9"><span class="problematic" id="id10">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -518,6 +703,38 @@ min–max–normalized scores as a tie-breaker.</p>
 <dd class="field-even"><p>Set of selected feature names.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.consensus_merger.ConsensusMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.consensus_merger.ConsensusMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.consensus_merger.ConsensusMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id11"><span class="problematic" id="id12">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -591,6 +808,38 @@ fill: If True, backfill to requested size even when below <cite>min_freq</cite>.
 <dd class="field-even"><p>Ordered list of merged feature names.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._aligned_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_aligned_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subsets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._aligned_scores" title="Link to this definition"></a></dt>
+<dd><p>Align subsets by feature name into a score matrix.</p>
+<p>Subsets may contain different features in different orders (e.g. each
+selector’s top-k), so scores must be matched by name, never by
+position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subsets</strong> – List of Feature lists (one list per selector).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>feature names in first-appearance order across
+subsets, and a float matrix of shape (n_features, n_subsets) with
+NaN where a selector did not score the feature.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(names, matrix)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._normalize_scores">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_normalize_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#moosefs.merging_strategies.frequency_bootstrap_merger.FrequencyBootstrapMerger._normalize_scores" title="Link to this definition"></a></dt>
+<dd><p>Min-max normalize each column (selector) over its present values.</p>
+<p>Selector scores live on incomparable scales (importances, <a href="#id13"><span class="problematic" id="id14">|coefs|</span></a>,
+mutual information), so each column is scaled to [0, 1] before
+aggregation. Missing entries (NaN) become 0 so features a selector
+did not score get no credit from it.</p>
 </dd></dl>
 
 <dl class="py method">

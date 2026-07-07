@@ -121,7 +121,7 @@
         <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">mutual_info_func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
-        <span class="n">scores</span> <span class="o">=</span> <span class="n">mutual_info_func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">mutual_info_func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">scores</span></div>
 </div>
 
