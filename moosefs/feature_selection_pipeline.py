@@ -855,12 +855,14 @@ class FeatureSelectionPipeline:
                 init_params = extract_params(cls, self, params)
                 return cls(**init_params)
             return cls
-        elif hasattr(input, "select_features") or hasattr(input, "merge"):
-            # Assumes valid instance if it has a 'select_features' or 'merge' method.
+        elif hasattr(input, "select_features") or hasattr(input, "merge") or hasattr(input, "compute"):
+            # Assumes valid instance if it exposes a selector ('select_features'),
+            # merger ('merge'), or metric ('compute') interface.
             return input
         else:
             raise ValueError(
-                "Input must be a string identifier or a valid instance of a feature selector or merging strategy."
+                "Input must be a string identifier or a valid instance of a "
+                "feature selector, merging strategy, or metric."
             )
 
     def _num_metrics_total(self):
