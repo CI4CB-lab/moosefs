@@ -839,7 +839,9 @@ class FeatureSelectionPipeline:
 
         Args:
             input: Identifier or instance of a selector/merger/metric.
-            instantiate: If True, instantiate using extracted parameters.
+            instantiate: If True, instantiate string identifiers using
+                extracted pipeline parameters. Instances are returned as-is
+                so user-provided configuration is preserved.
 
         Returns:
             Class or instance.
@@ -855,15 +857,6 @@ class FeatureSelectionPipeline:
             return cls
         elif hasattr(input, "select_features") or hasattr(input, "merge"):
             # Assumes valid instance if it has a 'select_features' or 'merge' method.
-            if instantiate:
-                # Best-effort: re-instantiate using the class and pipeline params
-                cls = input.__class__
-                init_params = extract_params(cls, self, [])
-                try:
-                    return cls(**init_params)
-                except Exception:
-                    # Fallback to returning the same instance if re-instantiation fails
-                    return input
             return input
         else:
             raise ValueError(
