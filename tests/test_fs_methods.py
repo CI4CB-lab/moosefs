@@ -1,7 +1,9 @@
+import numpy as np
 import pytest
 from sklearn.datasets import make_classification, make_regression
 
 from moosefs.feature_selectors import (
+    ElasticNetSelector,
     FStatisticSelector,
     LassoSelector,
     MutualInfoSelector,
@@ -161,6 +163,83 @@ def test_feature_selection_mrrm_regression(fake_data_regression):
     assert len(selected_features) == 2
     assert set(selected_features) == set(expected_features)
 """
+
+
+def test_random_forest_kwargs_forwarded():
+    # kwargs (random_state, model hyperparameters) used to be silently dropped.
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(80, 10))
+    y = rng.integers(0, 2, size=80)
+
+    scores1, _ = RandomForestSelector(task="classification", num_features_to_select=3, random_state=0).select_features(
+        X, y
+    )
+    scores2, _ = RandomForestSelector(task="classification", num_features_to_select=3, random_state=0).select_features(
+        X, y
+    )
+    assert np.array_equal(scores1, scores2)
+
+    scores3, _ = RandomForestSelector(
+        task="classification", num_features_to_select=3, random_state=0, n_estimators=5
+    ).select_features(X, y)
+    assert not np.array_equal(scores1, scores3)
+
+
+def test_xgboost_kwargs_forwarded():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(80, 10))
+    y = rng.integers(0, 2, size=80)
+
+    scores_small, _ = XGBoostSelector(
+        task="classification", num_features_to_select=3, n_estimators=1, max_depth=1
+    ).select_features(X, y)
+    scores_large, _ = XGBoostSelector(
+        task="classification", num_features_to_select=3, n_estimators=50, max_depth=6
+    ).select_features(X, y)
+    assert not np.array_equal(scores_small, scores_large)
+
+
+def test_mutual_info_kwargs_forwarded():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 5))
+    y = rng.integers(0, 2, size=100)
+
+    scores1, _ = MutualInfoSelector(task="classification", num_features_to_select=2, random_state=7).select_features(
+        X, y
+    )
+    scores2, _ = MutualInfoSelector(task="classification", num_features_to_select=2, random_state=7).select_features(
+        X, y
+    )
+    assert np.array_equal(scores1, scores2)
+
+
+def test_lasso_alpha_kwarg_persists_across_calls():
+    # `alpha` used to be popped from kwargs, so a second call on the same
+    # selector silently fell back to the default.
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 5))
+    y = 3 * X[:, 0] + rng.normal(scale=0.1, size=100)
+
+    selector = LassoSelector(task="regression", num_features_to_select=2, alpha=1e6)
+    scores_first, _ = selector.select_features(X, y)
+    scores_second, _ = selector.select_features(X, y)
+
+    # A huge alpha shrinks every coefficient to zero - on every call.
+    assert np.allclose(scores_first, 0.0)
+    assert np.array_equal(scores_first, scores_second)
+
+
+def test_elastic_net_kwargs_persist_across_calls():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 5))
+    y = 3 * X[:, 0] + rng.normal(scale=0.1, size=100)
+
+    selector = ElasticNetSelector(task="regression", num_features_to_select=2, alpha=1e6)
+    scores_first, _ = selector.select_features(X, y)
+    scores_second, _ = selector.select_features(X, y)
+
+    assert np.allclose(scores_first, 0.0)
+    assert np.array_equal(scores_first, scores_second)
 
 
 def test_feature_selection_lasso_classification(fake_data_classification):

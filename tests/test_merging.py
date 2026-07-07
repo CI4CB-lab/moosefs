@@ -99,6 +99,35 @@ def test_merge_fill(union_of_intersections):
     assert len(result) == 4
 
 
+def test_merge_fill_uses_within_subset_normalization(union_of_intersections):
+    # Core is empty, so fill must pick the best feature of each selector.
+    # Scores are min-max normalized within each subset: "x" and "z" both
+    # normalize to 1.0 despite living on wildly different scales.
+    subsets = [
+        [Feature("x", 100.0), Feature("y", 99.0)],
+        [Feature("z", 0.02), Feature("w", 0.01)],
+    ]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert result == {"x", "z"}
+
+
+def test_merge_fill_ragged_subsets(union_of_intersections):
+    # Subsets of different lengths must merge without error.
+    subsets = [
+        [Feature("a", 3.0), Feature("b", 2.0), Feature("c", 1.0)],
+        [Feature("b", 5.0), Feature("d", 4.0)],
+    ]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert "b" in result  # core feature
+    assert len(result) == 2
+
+
+def test_single_subset_fill(union_of_intersections):
+    subsets = [[Feature("A", 1.0), Feature("B", 3.0), Feature("C", 2.0)]]
+    result = union_of_intersections.merge(subsets, num_features_to_select=2, fill=True)
+    assert result == {"B", "C"}
+
+
 def test_borda_basic_functionality(borda_merger):
     subsets = [
         [Feature("A", 10), Feature("B", 8), Feature("C", 6)],
@@ -236,6 +265,56 @@ def test_borda_big(borda_merger):
     subsets = [features1, features2]
     result = borda_merger.merge(subsets, num_features_to_select=10)
     assert result == expected_result
+
+
+def test_borda_misaligned_subsets(borda_merger):
+    # Selectors select different features: merging must align by name,
+    # not by list position, and features absent from the first subset
+    # must still be able to win.
+    subsets = [
+        [Feature("x", 10), Feature("y", 5), Feature("z", 1)],
+        [Feature("x", 9), Feature("w", 8), Feature("y", 2)],
+    ]
+    result = borda_merger.merge(subsets, num_features_to_select=3)
+    # Ranks: x -> (1, 1), y -> (2, 3), w -> (missing=4, 2), z -> (3, missing=4)
+    assert result == ["x", "y", "w"]
+
+
+def test_borda_single_subset_sorted_by_score(borda_merger):
+    subsets = [[Feature("A", 6), Feature("B", 10), Feature("C", 8)]]
+    result = borda_merger.merge(subsets, num_features_to_select=3)
+    assert result == ["B", "C", "A"]
+
+
+def test_arithmetic_mean_misaligned_subsets(arithmetic_mean_merger):
+    subsets = [
+        [Feature("x", 10), Feature("y", 6), Feature("z", 2)],
+        [Feature("y", 9), Feature("z", 8), Feature("w", 1)],
+    ]
+    # Normalized: x -> (1, 0), y -> (0.5, 1), z -> (0, 0.875), w -> (0, 0)
+    result = arithmetic_mean_merger.merge(subsets, num_features_to_select=2)
+    assert result == ["y", "x"]
+
+
+def test_l2norm_misaligned_subsets(l2norm_merger):
+    subsets = [
+        [Feature("x", 10), Feature("y", 6), Feature("z", 2)],
+        [Feature("y", 9), Feature("z", 8), Feature("w", 1)],
+    ]
+    # Normalized: x -> (1, 0), y -> (0.5, 1), z -> (0, 0.875), w -> (0, 0)
+    result = l2norm_merger.merge(subsets, num_features_to_select=2)
+    assert result == ["y", "x"]
+
+
+def test_arithmetic_mean_normalizes_selector_scales(arithmetic_mean_merger):
+    # Selector 1 scores in the thousands, selector 2 in [0, 1]: without
+    # per-selector normalization, selector 1 would dominate and "a" would win.
+    subsets = [
+        [Feature("a", 1000.0), Feature("b", 999.0), Feature("c", 0.0)],
+        [Feature("a", 0.0), Feature("b", 1.0), Feature("c", 0.5)],
+    ]
+    result = arithmetic_mean_merger.merge(subsets, num_features_to_select=3)
+    assert result[0] == "b"
 
 
 def test_l2norm_basic_functionality(l2norm_merger):

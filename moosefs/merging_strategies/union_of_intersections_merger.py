@@ -1,8 +1,5 @@
-from collections import defaultdict
 from itertools import combinations
 from typing import Optional
-
-import numpy as np
 
 from .base_merger import MergingStrategy
 
@@ -42,38 +39,22 @@ class UnionOfIntersectionsMerger(MergingStrategy):
             raise ValueError("`num_features_to_select` must be provided when `fill=True`.")
 
         if len(subsets) == 1:
-            feature_names = {f.name for f in subsets[0]}
-            return (
-                set(sorted(feature_names, key=lambda f: f.score, reverse=True)[:num_features_to_select])
-                if fill
-                else feature_names
-            )
-
-        # Extract feature names and scores
-        feature_names = [[f.name for f in subset] for subset in subsets]
-        feature_scores = np.array([[f.score for f in subset] for subset in subsets], dtype=np.float32).T
-
-        # Normalize scores within each subset (vectorized min-max scaling)
-        min_vals, max_vals = (
-            feature_scores.min(axis=1, keepdims=True),
-            feature_scores.max(axis=1, keepdims=True),
-        )
-        score_range = np.where(max_vals - min_vals == 0, 1, max_vals - min_vals)  # Prevent division by zero
-        feature_scores = (feature_scores - min_vals) / score_range
+            if not fill:
+                return {f.name for f in subsets[0]}
+            top = sorted(subsets[0], key=lambda f: f.score, reverse=True)
+            return {f.name for f in top[:num_features_to_select]}
 
         # Compute core as the union of pairwise intersections
-        core = set().union(
-            *[set(feature_names[i]) & set(feature_names[j]) for i, j in combinations(range(len(feature_names)), 2)]
-        )
+        name_sets = [{f.name for f in subset} for subset in subsets]
+        core = set().union(*[a & b for a, b in combinations(name_sets, 2)])
 
         if not fill:
             return core  # Return raw core without enforcing `num_features_to_select`
 
-        # Compute global feature scores (sum of normalized values)
-        feature_score_map = defaultdict(float)
-        for subset, scores in zip(feature_names, feature_scores.T):
-            for name, score in zip(subset, scores):
-                feature_score_map[name] += score
+        # Global feature scores: sum of per-selector min-max-normalized scores
+        feature_names, scores = self._aligned_scores(subsets)
+        totals = self._normalize_scores(scores).sum(axis=1)
+        feature_score_map = dict(zip(feature_names, totals))
 
         # Prune or fill to get exactly `num_features_to_select`
         core_list = sorted(core, key=lambda x: feature_score_map[x], reverse=True)

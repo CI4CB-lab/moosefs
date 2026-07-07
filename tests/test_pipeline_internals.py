@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 
 from moosefs.feature_selection_pipeline import FeatureSelectionPipeline
+from moosefs.feature_selectors import FStatisticSelector
+from moosefs.merging_strategies import ConsensusMerger
+from moosefs.metrics.performance_metrics import Accuracy, F1Score
 
 
 def _tiny_pipeline():
@@ -42,6 +45,64 @@ def test_calculate_means_and_extract_repeat_metrics():
     assert len(rows) == 2
     assert rows[0] == [1.0, 10.0]
     assert rows[1] == [3.0, 30.0]
+
+
+def test_user_instances_keep_configuration():
+    # Instances passed to the pipeline must be used as-is: they used to be
+    # re-instantiated with default arguments, silently discarding user
+    # configuration (e.g. ConsensusMerger(k=3) became k=2).
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(size=(20, 6)), columns=[f"f{i}" for i in range(6)])
+    y = pd.Series(rng.integers(0, 2, size=len(X)), name="label")
+
+    merger = ConsensusMerger(k=3, fill=True)
+    selector = FStatisticSelector(task="classification", num_features_to_select=4)
+
+    pipeline = FeatureSelectionPipeline(
+        X=X,
+        y=y,
+        fs_methods=[selector, "variance_selector"],
+        merging_strategy=merger,
+        num_repeats=2,
+        num_features_to_select=3,
+        metrics=["accuracy"],
+        task="classification",
+        random_state=0,
+        n_jobs=1,
+    )
+
+    assert pipeline.merging_strategy is merger
+    assert pipeline.merging_strategy.k == 3
+    assert pipeline.merging_strategy.fill is True
+    assert pipeline.fs_methods[0] is selector
+    assert pipeline.fs_methods[0].num_features_to_select == 4
+
+
+def test_metric_instances_accepted():
+    # Metric instances used to be rejected by _load_class with a ValueError,
+    # despite the documentation advertising instance support.
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(size=(30, 6)), columns=[f"f{i}" for i in range(6)])
+    y = pd.Series((X["f0"] > 0).astype(int).to_numpy(), name="label")
+
+    accuracy = Accuracy()
+    pipeline = FeatureSelectionPipeline(
+        X=X,
+        y=y,
+        fs_methods=["f_statistic_selector", "variance_selector"],
+        merging_strategy="union_of_intersections_merger",
+        num_repeats=2,
+        num_features_to_select=3,
+        metrics=[accuracy, F1Score()],
+        task="classification",
+        random_state=0,
+        n_jobs=1,
+        fill=True,
+    )
+    assert pipeline.metrics[0] is accuracy
+
+    features, ensemble = pipeline.run(verbose=False)
+    assert len(features) > 0
 
 
 def test_invalid_task_raises():

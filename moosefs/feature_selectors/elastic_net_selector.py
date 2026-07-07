@@ -37,9 +37,9 @@ class ElasticNetSelector(FeatureSelector):
 
         if self.task == "regression":
             params = {
-                "alpha": self.kwargs.pop("alpha", 1.0),
-                "l1_ratio": self.kwargs.pop("l1_ratio", 0.5),
-                "max_iter": self.kwargs.pop("max_iter", 100_000),
+                "alpha": 1.0,
+                "l1_ratio": 0.5,
+                "max_iter": 100_000,
                 **self.kwargs,
             }
             model = make_pipeline(StandardScaler(with_mean=True, with_std=True), ElasticNet(**params))
@@ -47,20 +47,16 @@ class ElasticNetSelector(FeatureSelector):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=ConvergenceWarning)
                 model.fit(X, y)
-            # model = ElasticNet(**params)
-            model.fit(X, y)
             coef = model[-1].coef_
 
         elif self.task == "classification":
             # LogisticRegression uses C instead of alpha; keep both if user passes.
-            l1_ratio = self.kwargs.pop("l1_ratio", 0.5)
-            C = self.kwargs.pop("C", 1.0)
             params = {
                 "penalty": "elasticnet",
                 "solver": "saga",
-                "l1_ratio": l1_ratio,
-                "C": C,
-                "max_iter": self.kwargs.pop("max_iter", 100_000),
+                "l1_ratio": 0.5,
+                "C": 1.0,
+                "max_iter": 100_000,
                 **self.kwargs,
             }
             model = LogisticRegression(**params)

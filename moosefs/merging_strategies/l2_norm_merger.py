@@ -20,6 +20,11 @@ class L2NormMerger(MergingStrategy):
     ) -> list:
         """Return the top‑k feature names after L2-norm aggregation.
 
+        Subsets are aligned by feature name and each selector's scores are
+        min-max normalized before aggregation, so selectors may contribute
+        different feature sets on different score scales. Features missing
+        from a selector's subset get no credit from it.
+
         Args:
             subsets: Feature lists (one list per selector).
             num_features_to_select: Number of names to return.
@@ -29,14 +34,10 @@ class L2NormMerger(MergingStrategy):
         """
         self._validate_input(subsets)
 
-        if len(subsets) == 1:
-            return [f.name for f in subsets[0]][:num_features_to_select]
+        feature_names, scores = self._aligned_scores(subsets)
 
-        feature_names = [f.name for f in subsets[0]]
-        scores = np.array([[f.score for f in s] for s in subsets]).T
-
-        # Euclidean norm (root-mean-square) across selectors
-        scores_merged = np.linalg.norm(scores, ord=2, axis=1)
+        # Euclidean norm (root-mean-square) of per-selector normalized scores
+        scores_merged = np.linalg.norm(self._normalize_scores(scores), ord=2, axis=1)
 
         sorted_names = [feature_names[i] for i in np.argsort(-scores_merged, kind="stable")]
         return sorted_names[:num_features_to_select]
