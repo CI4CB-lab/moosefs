@@ -1,5 +1,8 @@
+import warnings
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from moosefs.feature_selection_pipeline import FeatureSelectionPipeline
 from moosefs.feature_selectors import FStatisticSelector
@@ -103,6 +106,78 @@ def test_metric_instances_accepted():
 
     features, ensemble = pipeline.run(verbose=False)
     assert len(features) > 0
+
+
+def _small_classification_data(n_samples=30, n_features=6):
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(size=(n_samples, n_features)), columns=[f"f{i}" for i in range(n_features)])
+    y = pd.Series((X["f0"] > 0).astype(int).to_numpy(), name="label")
+    return X, y
+
+
+def test_invalid_stability_mode_raises():
+    X, y = _small_classification_data()
+    with pytest.raises(ValueError, match="stability_mode"):
+        FeatureSelectionPipeline(
+            X=X,
+            y=y,
+            fs_methods=["f_statistic_selector", "variance_selector"],
+            merging_strategy="borda_merger",
+            num_repeats=2,
+            num_features_to_select=3,
+            task="classification",
+            stability_mode="not-a-mode",
+        )
+
+
+def test_consistency_is_opt_in():
+    X, y = _small_classification_data()
+    kwargs = dict(
+        X=X,
+        y=y,
+        fs_methods=["f_statistic_selector", "variance_selector"],
+        merging_strategy="union_of_intersections_merger",
+        num_repeats=2,
+        num_features_to_select=3,
+        metrics=["accuracy"],
+        task="classification",
+        random_state=0,
+        n_jobs=1,
+        fill=True,
+    )
+
+    default = FeatureSelectionPipeline(**kwargs)
+    assert default.include_consistency is False
+    assert default._pareto_dims() == 2  # accuracy + fold stability
+
+    with_consistency = FeatureSelectionPipeline(**kwargs, include_consistency=True)
+    assert with_consistency._pareto_dims() == 3
+
+    # Both configurations must run end to end.
+    features, _ = with_consistency.run(verbose=False)
+    assert len(features) > 0
+
+
+def test_warns_when_too_many_pareto_objectives():
+    X, y = _small_classification_data()
+    kwargs = dict(
+        X=X,
+        y=y,
+        fs_methods=["f_statistic_selector", "variance_selector"],
+        merging_strategy="union_of_intersections_merger",
+        num_repeats=2,
+        num_features_to_select=3,
+        task="classification",
+    )
+
+    # 3 metrics + both stability signals = 5 objectives -> warn
+    with pytest.warns(UserWarning, match="Pareto selection"):
+        FeatureSelectionPipeline(**kwargs, metrics=["logloss", "f1_score", "accuracy"], stability_mode="all")
+
+    # 2 metrics + one stability signal = 3 objectives -> no warning
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        FeatureSelectionPipeline(**kwargs, metrics=["logloss", "f1_score"], stability_mode="fold_stability")
 
 
 def test_invalid_task_raises():
