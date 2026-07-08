@@ -115,6 +115,43 @@ def _small_classification_data(n_samples=30, n_features=6):
     return X, y
 
 
+def test_selector_pool_factor_widens_selector_pools():
+    X, y = _small_classification_data(n_features=10)
+    kwargs = dict(
+        X=X,
+        y=y,
+        fs_methods=["f_statistic_selector", "variance_selector"],
+        merging_strategy="union_of_intersections_merger",
+        num_repeats=2,
+        num_features_to_select=3,
+        metrics=["accuracy"],
+        task="classification",
+        random_state=0,
+        n_jobs=1,
+        fill=True,
+    )
+
+    # Default factor 2.0: selectors rank a pool of 2 * k candidates.
+    pipeline = FeatureSelectionPipeline(**kwargs)
+    assert pipeline.selector_num_features == 6
+    assert all(m.num_features_to_select == 6 for m in pipeline.fs_methods)
+
+    # Factor 1.0 restores pool == k.
+    exact = FeatureSelectionPipeline(**kwargs, selector_pool_factor=1.0)
+    assert all(m.num_features_to_select == 3 for m in exact.fs_methods)
+
+    # The pool is capped at the total number of features.
+    capped = FeatureSelectionPipeline(**{**kwargs, "num_features_to_select": 8})
+    assert capped.selector_num_features == 10
+
+    # Mergers still return exactly k features.
+    features, _ = pipeline.run(verbose=False)
+    assert len(features) == 3
+
+    with pytest.raises(ValueError, match="selector_pool_factor"):
+        FeatureSelectionPipeline(**kwargs, selector_pool_factor=0.5)
+
+
 def test_invalid_stability_mode_raises():
     X, y = _small_classification_data()
     with pytest.raises(ValueError, match="stability_mode"):

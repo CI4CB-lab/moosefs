@@ -37,6 +37,7 @@ class FeatureSelectionPipeline:
         task: str = "classification",
         min_group_size: int = 2,
         fill: bool = False,
+        selector_pool_factor: float = 2.0,
         random_state: Optional[int] = None,
         n_jobs: Optional[int] = None,
         stability_mode: str = "fold_stability",  # "selector_agreement", "fold_stability", or "all"
@@ -56,6 +57,15 @@ class FeatureSelectionPipeline:
             task: 'classification' or 'regression'.
             min_group_size: Minimum number of methods in each ensemble.
             fill: If True, enforce exact size after merging.
+            selector_pool_factor: Multiplier applied to
+                ``num_features_to_select`` to size each selector's candidate
+                pool (capped at the total number of features). Selectors rank
+                a wider pool while mergers still target
+                ``num_features_to_select``, which gives set-based mergers
+                larger, more stable intersections and rank-based mergers more
+                complete rankings. Applies only to selectors given as string
+                identifiers; instances keep their own configuration. Use 1.0
+                to make selector pools equal to the final size.
             random_state: Seed for reproducibility.
             n_jobs: Parallel jobs (use num_repeats when -1 or None).
             stability_mode: Stability metric configuration:
@@ -96,6 +106,18 @@ class FeatureSelectionPipeline:
         self.stability_mode = stability_mode
         self.include_consistency = include_consistency
 
+        if self.num_features_to_select is None:
+            raise ValueError("num_features_to_select must be provided")
+        if selector_pool_factor < 1.0:
+            raise ValueError("selector_pool_factor must be >= 1.0")
+        self.selector_pool_factor = float(selector_pool_factor)
+        # Selectors rank a wider candidate pool; mergers cut back to
+        # num_features_to_select.
+        self.selector_num_features = min(
+            int(np.ceil(self.num_features_to_select * self.selector_pool_factor)),
+            self.X.shape[1],
+        )
+
         # set seed for reproducibility
         self._set_seed(self.random_state)
 
@@ -107,16 +129,15 @@ class FeatureSelectionPipeline:
         )
 
         # dynamically load classes or instantiate them (initial instances)
-        self.fs_methods = [self._load_class(m, instantiate=True) for m in self._fs_method_specs]
+        self.fs_methods = [
+            self._load_class(m, instantiate=True, overrides={"num_features_to_select": self.selector_num_features})
+            for m in self._fs_method_specs
+        ]
         self.metrics = [self._load_class(m, instantiate=True) for m in self._metric_specs]
         self.merging_strategies = [self._load_class(m, instantiate=True) for m in self._merging_specs]
         # Backwards-compatible alias when a single merger is used
         self.merging_strategy = self.merging_strategies[0]
         self._multiple_mergers = len(self.merging_strategies) > 1
-
-        # validate and preparation
-        if self.num_features_to_select is None:
-            raise ValueError("num_features_to_select must be provided")
 
         # Too many Pareto objectives make most ensembles mutually non-dominated,
         # so the utopia-distance tie-break ends up deciding instead of dominance.
@@ -851,7 +872,7 @@ class FeatureSelectionPipeline:
             result_array.append(row)
         return result_array
 
-    def _load_class(self, input, instantiate=False):
+    def _load_class(self, input, instantiate=False, overrides=None):
         """Resolve identifiers to classes/instances and optionally instantiate.
 
         Args:
@@ -859,6 +880,9 @@ class FeatureSelectionPipeline:
             instantiate: If True, instantiate string identifiers using
                 extracted pipeline parameters. Instances are returned as-is
                 so user-provided configuration is preserved.
+            overrides: Optional mapping replacing extracted init parameters
+                (only keys that were extracted are overridden; instances are
+                never modified).
 
         Returns:
             Class or instance.
@@ -870,6 +894,8 @@ class FeatureSelectionPipeline:
             cls, params = get_class_info(input)
             if instantiate:
                 init_params = extract_params(cls, self, params)
+                if overrides:
+                    init_params.update({k: v for k, v in overrides.items() if k in init_params})
                 return cls(**init_params)
             return cls
         elif hasattr(input, "select_features") or hasattr(input, "merge") or hasattr(input, "compute"):
