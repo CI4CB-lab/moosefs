@@ -19,6 +19,8 @@ from sklearn.metrics import (
     r2_score,
     recall_score,
 )
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 class BaseMetric:
@@ -59,10 +61,12 @@ class BaseMetric:
             Mapping from model label to estimator instance.
         """
         # Keep inner models single-threaded to avoid nested parallelism.
+        # Logistic regression is scale-sensitive, so it standardizes its
+        # inputs; tree-based models are scale-invariant and run unscaled.
         return {
             "classification": {
                 "Random Forest": RandomForestClassifier(n_jobs=1),
-                "Logistic Regression": LogisticRegression(max_iter=1000),
+                "Logistic Regression": make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)),
                 "Hist Gradient Boosting": HistGradientBoostingClassifier(),
             },
             "regression": {

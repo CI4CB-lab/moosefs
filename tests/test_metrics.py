@@ -64,6 +64,21 @@ def test_recall_score(classification_data):
     assert 0.0 <= result <= 1.0, f"Unexpected Recall Score: {result}"
 
 
+def test_logistic_regression_metric_model_is_scaled():
+    from sklearn.pipeline import Pipeline
+
+    metric = Accuracy()
+    model = metric.models["Logistic Regression"]
+    assert isinstance(model, Pipeline)
+    assert model.steps[0][0] == "standardscaler"
+
+
+def test_model_signature_shared_across_metric_instances():
+    # The fold-level model cache relies on identical signatures across
+    # metric instances that use the same model battery.
+    assert Accuracy().model_signature() == F1Score().model_signature()
+
+
 # Regression Metrics Tests
 def test_mean_squared_error(regression_data):
     X_train, X_test, y_train, y_test = regression_data

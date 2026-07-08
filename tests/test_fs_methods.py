@@ -242,6 +242,32 @@ def test_elastic_net_kwargs_persist_across_calls():
     assert np.array_equal(scores_first, scores_second)
 
 
+@pytest.mark.parametrize("selector_cls", [SVMSelector, LassoSelector, ElasticNetSelector])
+def test_coefficient_selectors_are_scale_invariant(selector_cls):
+    # Coefficient-based selectors standardize internally: blowing up the
+    # scale of an informative feature must not change what gets selected
+    # (unscaled, its coefficient would shrink by the same factor and the
+    # feature would drop out of the top-k).
+    X, y = make_classification(
+        n_samples=300,
+        n_features=8,
+        n_informative=3,
+        n_redundant=0,
+        shuffle=False,  # informative features are columns 0-2
+        random_state=5,
+    )
+
+    selector = selector_cls(task="classification", num_features_to_select=3)
+    _, idx_original = selector.select_features(X, y)
+
+    X_blown = X.copy()
+    X_blown[:, 0] *= 1e6
+    _, idx_blown = selector.select_features(X_blown, y)
+
+    assert set(map(int, idx_blown)) == set(map(int, idx_original))
+    assert 0 in set(map(int, idx_blown))
+
+
 def test_feature_selection_lasso_classification(fake_data_classification):
     X, y, expected_features = fake_data_classification
     selector = LassoSelector(task="classification", num_features_to_select=3)
