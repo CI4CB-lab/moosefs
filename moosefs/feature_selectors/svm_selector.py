@@ -1,6 +1,8 @@
 from typing import Any
 
 import numpy as np
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
 
 from .base_selector import FeatureSelector
@@ -44,7 +46,8 @@ class SVMSelector(FeatureSelector):
             {k: v for k, v in self.kwargs.items() if k != "random_state"} if self.task == "regression" else self.kwargs
         )
 
-        model = model_cls(kernel="linear", **filtered_kwargs)
+        # Standardize features so coefficient magnitudes are comparable.
+        model = make_pipeline(StandardScaler(), model_cls(kernel="linear", **filtered_kwargs))
         model.fit(X, y)
-        scores = np.abs(model.coef_[0])
+        scores = np.abs(model[-1].coef_[0])
         return scores

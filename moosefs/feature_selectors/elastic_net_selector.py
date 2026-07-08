@@ -59,9 +59,11 @@ class ElasticNetSelector(FeatureSelector):
                 "max_iter": 100_000,
                 **self.kwargs,
             }
-            model = LogisticRegression(**params)
+            # Standardize features so coefficient magnitudes are comparable
+            # (the regression branch already scales inside its pipeline).
+            model = make_pipeline(StandardScaler(with_mean=True, with_std=True), LogisticRegression(**params))
             model.fit(X, y)
-            coef = model.coef_  # shape (n_classes, n_features) or (1, n_features)
+            coef = model[-1].coef_  # shape (n_classes, n_features) or (1, n_features)
             if coef.ndim > 1:
                 coef = np.mean(np.abs(coef), axis=0)
         else:

@@ -37,9 +37,11 @@ class FeatureSelectionPipeline:
         task: str = "classification",
         min_group_size: int = 2,
         fill: bool = False,
+        selector_pool_factor: float = 2.0,
         random_state: Optional[int] = None,
         n_jobs: Optional[int] = None,
         stability_mode: str = "fold_stability",  # "selector_agreement", "fold_stability", or "all"
+        include_consistency: bool = False,
     ) -> None:
         """Initialize the pipeline.
 
@@ -55,6 +57,15 @@ class FeatureSelectionPipeline:
             task: 'classification' or 'regression'.
             min_group_size: Minimum number of methods in each ensemble.
             fill: If True, enforce exact size after merging.
+            selector_pool_factor: Multiplier applied to
+                ``num_features_to_select`` to size each selector's candidate
+                pool (capped at the total number of features). Selectors rank
+                a wider pool while mergers still target
+                ``num_features_to_select``, which gives set-based mergers
+                larger, more stable intersections and rank-based mergers more
+                complete rankings. Applies only to selectors given as string
+                identifiers; instances keep their own configuration. Use 1.0
+                to make selector pools equal to the final size.
             random_state: Seed for reproducibility.
             n_jobs: Parallel jobs (use num_repeats when -1 or None).
             stability_mode: Stability metric configuration:
@@ -62,6 +73,11 @@ class FeatureSelectionPipeline:
                 - "fold_stability": Stability across CV folds (consistent features?)
                 - "all": Include both stability metrics in Pareto optimization
                 Default: "fold_stability" (most important for robust features)
+            include_consistency: If True, add a consistency objective
+                (inverse of the average metric std across folds) to the Pareto
+                selection. Off by default: the std estimated from few folds is
+                noisy, overlaps with fold stability, and its scale is dominated
+                by unbounded metrics such as logloss.
 
         Raises:
             ValueError: If task is invalid or required parameters are missing.
@@ -75,6 +91,8 @@ class FeatureSelectionPipeline:
         # parameters validation
         if task not in ["classification", "regression"]:
             raise ValueError("Task must be either 'classification' or 'regression'.")
+        if stability_mode not in ("selector_agreement", "fold_stability", "all"):
+            raise ValueError("stability_mode must be 'selector_agreement', 'fold_stability', or 'all'.")
         self.X, self.y = self._validate_X_y(data=data, X=X, y=y)
         self.target_name = self.y.name
         self.data = pd.concat([self.X, self.y], axis=1)
@@ -86,6 +104,19 @@ class FeatureSelectionPipeline:
         self.min_group_size = min_group_size
         self.fill = fill
         self.stability_mode = stability_mode
+        self.include_consistency = include_consistency
+
+        if self.num_features_to_select is None:
+            raise ValueError("num_features_to_select must be provided")
+        if selector_pool_factor < 1.0:
+            raise ValueError("selector_pool_factor must be >= 1.0")
+        self.selector_pool_factor = float(selector_pool_factor)
+        # Selectors rank a wider candidate pool; mergers cut back to
+        # num_features_to_select.
+        self.selector_num_features = min(
+            int(np.ceil(self.num_features_to_select * self.selector_pool_factor)),
+            self.X.shape[1],
+        )
 
         # set seed for reproducibility
         self._set_seed(self.random_state)
@@ -98,16 +129,28 @@ class FeatureSelectionPipeline:
         )
 
         # dynamically load classes or instantiate them (initial instances)
-        self.fs_methods = [self._load_class(m, instantiate=True) for m in self._fs_method_specs]
+        self.fs_methods = [
+            self._load_class(m, instantiate=True, overrides={"num_features_to_select": self.selector_num_features})
+            for m in self._fs_method_specs
+        ]
         self.metrics = [self._load_class(m, instantiate=True) for m in self._metric_specs]
         self.merging_strategies = [self._load_class(m, instantiate=True) for m in self._merging_specs]
         # Backwards-compatible alias when a single merger is used
         self.merging_strategy = self.merging_strategies[0]
         self._multiple_mergers = len(self.merging_strategies) > 1
 
-        # validate and preparation
-        if self.num_features_to_select is None:
-            raise ValueError("num_features_to_select must be provided")
+        # Too many Pareto objectives make most ensembles mutually non-dominated,
+        # so the utopia-distance tie-break ends up deciding instead of dominance.
+        pareto_dims = self._pareto_dims()
+        if pareto_dims > 4:
+            warnings.warn(
+                f"Pareto selection will rank ensembles on {pareto_dims} objectives. With correlated "
+                "metrics most ensembles become non-dominated and the utopia-distance tie-break "
+                "decides the winner. Consider at most 2 performance metrics, a single stability "
+                "mode, and include_consistency=False.",
+                UserWarning,
+                stacklevel=2,
+            )
         # ensemble selector combinations are generated in run() after instantiation
         self.selector_ensembles = []
         self.ensembles = []
@@ -304,11 +347,12 @@ class FeatureSelectionPipeline:
                 result_dicts[dict_idx].update(partial_result_dicts[dict_idx])
 
     def _select_best_ensemble(self, result_dicts):
-        """Select best ensemble using single-stage Pareto with consistency metric.
+        """Select best ensemble using single-stage Pareto optimization.
 
         For each ensemble, computes:
         - Mean of each performance metric across folds
-        - Consistency score (inverse of average std across performance metrics)
+        - Consistency score (inverse of average std across performance
+          metrics), only when ``include_consistency=True``
         - Stability metrics (already computed per ensemble)
 
         Returns:
@@ -333,23 +377,17 @@ class FeatureSelectionPipeline:
             if len(fold_results) == 0:
                 failed_ensembles.append(ensemble)
                 # Create vector of -inf for failed ensembles
-                # Length: performance metrics + consistency + stability metrics
-                num_metrics = num_performance_metrics + 1 + (self._num_metrics_total() - num_performance_metrics)
-                ensemble_metrics.append([-float("inf")] * num_metrics)
+                ensemble_metrics.append([-float("inf")] * self._pareto_dims())
                 continue
 
-            # Compute mean and std for each performance metric
+            # Build metric vector: [mean1, mean2, ..., (consistency,) stability_metrics...]
             fold_results_array = np.array(fold_results)  # shape: (num_folds, num_metrics)
-            means = np.mean(fold_results_array, axis=0)
-            stds = np.std(fold_results_array, axis=0)
+            metric_vector = list(np.mean(fold_results_array, axis=0))
 
-            # Compute consistency score: inverse of average std
-            # Add small epsilon to avoid division by zero
-            avg_std = np.mean(stds)
-            consistency = 1.0 / (1.0 + avg_std)
-
-            # Build metric vector: [mean1, mean2, ..., consistency, stability_metrics...]
-            metric_vector = list(means) + [consistency]
+            if self.include_consistency:
+                # Consistency score: inverse of average std across folds
+                avg_std = np.mean(np.std(fold_results_array, axis=0))
+                metric_vector.append(1.0 / (1.0 + avg_std))
 
             # Add stability metrics (already aggregated per ensemble, not per fold)
             stability_start_idx = num_performance_metrics
@@ -834,7 +872,7 @@ class FeatureSelectionPipeline:
             result_array.append(row)
         return result_array
 
-    def _load_class(self, input, instantiate=False):
+    def _load_class(self, input, instantiate=False, overrides=None):
         """Resolve identifiers to classes/instances and optionally instantiate.
 
         Args:
@@ -842,6 +880,9 @@ class FeatureSelectionPipeline:
             instantiate: If True, instantiate string identifiers using
                 extracted pipeline parameters. Instances are returned as-is
                 so user-provided configuration is preserved.
+            overrides: Optional mapping replacing extracted init parameters
+                (only keys that were extracted are overridden; instances are
+                never modified).
 
         Returns:
             Class or instance.
@@ -853,6 +894,8 @@ class FeatureSelectionPipeline:
             cls, params = get_class_info(input)
             if instantiate:
                 init_params = extract_params(cls, self, params)
+                if overrides:
+                    init_params.update({k: v for k, v in overrides.items() if k in init_params})
                 return cls(**init_params)
             return cls
         elif hasattr(input, "select_features") or hasattr(input, "merge") or hasattr(input, "compute"):
@@ -873,6 +916,10 @@ class FeatureSelectionPipeline:
         if self.stability_mode in ("fold_stability", "all"):
             extra += 1
         return len(self.metrics) + extra
+
+    def _pareto_dims(self):
+        """Number of objectives used in Pareto ensemble selection."""
+        return self._num_metrics_total() + (1 if self.include_consistency else 0)
 
     def __str__(self):
         return (

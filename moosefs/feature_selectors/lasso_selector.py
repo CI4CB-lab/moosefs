@@ -3,6 +3,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Lasso
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from .base_selector import FeatureSelector
 
@@ -39,8 +41,9 @@ class LassoSelector(FeatureSelector):
         if isinstance(y, np.ndarray) and y.ndim == 2:
             y = y.ravel()
 
-        # set default alpha to 0.05 if not provided in kwargs
-        model = Lasso(**{"alpha": 0.05, **self.kwargs})
+        # Standardize features so coefficient magnitudes are comparable;
+        # default alpha is 0.05 if not provided in kwargs.
+        model = make_pipeline(StandardScaler(), Lasso(**{"alpha": 0.05, **self.kwargs}))
         model.fit(X, y)
-        scores = np.abs(model.coef_)
+        scores = np.abs(model[-1].coef_)
         return scores
