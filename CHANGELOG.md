@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.4.0] - 2026-07-08
+
+### Fixed
+
+- Rank-based mergers (`BordaMerger`, `ArithmeticMeanMerger`, `L2NormMerger`) now align subsets by feature name; positional alignment meant the merged result could only ever contain the first selector's features
+- `UnionOfIntersectionsMerger` fill/trim scores are min-max normalized within each selector (previously across selectors at each list position); single-selector merges with `fill=True` no longer crash
+- User-provided selector/merger instances keep their configuration (e.g. `ConsensusMerger(k=3, fill=True)` was silently re-instantiated with defaults)
+- Selector kwargs are forwarded to the underlying models: `random_state` and hyperparameters were silently dropped by the RandomForest, XGBoost, and MutualInfo selectors, and Lasso/ElasticNet lost kwargs after the first call
+- Metric instances are accepted by the pipeline (e.g. `metrics=[Accuracy()]`)
+
+### Added
+
+- `selector_pool_factor` parameter (default `2.0`): selectors rank a wider candidate pool while mergers still return `num_features_to_select` features, giving larger intersections and more complete rankings
+- `include_consistency` parameter (default `False`): the consistency objective is now opt-in instead of always adding a noisy Pareto dimension
+- Warnings when Pareto selection uses more than 4 objectives, when `min_group_size` equals the number of selectors, and when the utopia-distance tie-break decides the winner
+- Validation of `stability_mode` values
+
+### Changed
+
+- Scale-sensitive models standardize their inputs internally: SVM, Lasso, and ElasticNet-classification selectors, and the LogisticRegression metric model
+
+### Note
+
+- Default results differ from 0.3.x due to `selector_pool_factor=2.0`, internal standardization, and the merger fixes
+
+## [0.3.1] - 2026-02-23
+
+- Re-release of 0.3.0 (no code changes)
+
+## [0.3.0] - 2026-02-23
+
+### Changed
+
+- Metric evaluation uses `HistGradientBoosting` instead of `GradientBoosting` for faster model training
+
 ## [0.2.0] - 2026-02-03
 
 ### Changed
