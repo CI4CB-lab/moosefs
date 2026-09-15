@@ -81,7 +81,12 @@ class MergingStrategy:
         Selector scores live on incomparable scales (importances, |coefs|,
         mutual information), so each column is scaled to [0, 1] before
         aggregation. Missing entries (NaN) become 0 so features a selector
-        did not score get no credit from it.
+        did not score get no credit from it. Positive infinity represents a
+        valid strongest score and maps to 1; finite values remain strictly
+        below it. Negative infinity is undefined and rejected.
+
+        Raises:
+            ValueError: If a present score is negative infinity.
         """
         normed = np.zeros_like(matrix)
         for col in range(matrix.shape[1]):
@@ -89,11 +94,24 @@ class MergingStrategy:
             if not present.any():
                 continue
             values = matrix[present, col]
-            min_v = values.min()
-            span = values.max() - min_v
-            if span == 0:
-                span = 1.0
-            normed[present, col] = (values - min_v) / span
+            if np.isneginf(values).any():
+                raise ValueError("Feature scores must not contain negative infinity.")
+
+            positive_infinity = np.isposinf(values)
+            finite = np.isfinite(values)
+            normalized_values = np.zeros_like(values)
+
+            if finite.any():
+                finite_values = values[finite]
+                min_v = finite_values.min()
+                span = finite_values.max() - min_v
+                if span != 0:
+                    normalized_values[finite] = (finite_values - min_v) / span
+                    if positive_infinity.any():
+                        normalized_values[finite] *= np.nextafter(1.0, 0.0)
+
+            normalized_values[positive_infinity] = 1.0
+            normed[present, col] = normalized_values
         return normed
 
     def _validate_input(self, subsets: list) -> None:

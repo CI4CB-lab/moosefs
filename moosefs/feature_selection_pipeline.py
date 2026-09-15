@@ -12,6 +12,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from .core import Feature, ParetoAnalysis
+from .merging_strategies.base_merger import MergingStrategy
 from .metrics.stability_metrics import compute_stability_metrics
 from .utils import extract_params, get_class_info
 
@@ -557,9 +558,11 @@ class FeatureSelectionPipeline:
 
                 if use_scores and scores is not None:
                     score_arr = np.asarray(scores, dtype=np.float32)
-                    min_v = float(score_arr.min())
-                    rng_v = float(score_arr.max() - min_v) or 1.0
-                    norm_scores = (score_arr - min_v) / rng_v
+                    # Undefined scores remain aligned but contribute no credit.
+                    # Use the merger normalization contract so valid +inf
+                    # scores cannot produce inf - inf -> NaN here.
+                    score_arr = np.where(np.isneginf(score_arr), np.nan, score_arr)
+                    norm_scores = MergingStrategy._normalize_scores(score_arr[:, None])[:, 0]
                     score_sums[sel_idx] += norm_scores[sel_idx]
 
             stats[fs_method.name] = {

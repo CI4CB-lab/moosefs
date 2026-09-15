@@ -30,7 +30,10 @@ class FStatisticSelector(FeatureSelector):
             y: Target values.
 
         Returns:
-            F-statistic scores for each feature.
+            Feature-aligned F-statistic scores. Constant features may have NaN
+            scores, while perfect separation may produce positive infinity;
+            ``select_features`` handles both according to the base score
+            contract.
 
         Raises:
             ValueError: If task is not 'classification' or 'regression'.
