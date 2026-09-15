@@ -82,19 +82,19 @@
 <div class="viewcode-block" id="FStatisticSelector">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.f_statistic_selector.FStatisticSelector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FStatisticSelector</span><span class="p">(</span><span class="n">FeatureSelector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature selector using F-statistic scores.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Feature selector using F-statistic scores."""</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;FStatistic&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"FStatistic"</span>
 
 <div class="viewcode-block" id="FStatisticSelector.__init__">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.f_statistic_selector.FStatisticSelector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Args:</span>
-<span class="sd">            task: ML task (&#39;classification&#39; or &#39;regression&#39;).</span>
+<span class="sd">            task: ML task ('classification' or 'regression').</span>
 <span class="sd">            num_features_to_select: Number of features to select.</span>
 <span class="sd">            **kwargs: Additional arguments for the scoring function.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span></div>
 
@@ -102,7 +102,7 @@
 <div class="viewcode-block" id="FStatisticSelector.compute_scores">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.f_statistic_selector.FStatisticSelector.compute_scores">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Computes F-statistic scores.</span>
 
 <span class="sd">        Args:</span>
@@ -110,14 +110,17 @@
 <span class="sd">            y: Target values.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            F-statistic scores for each feature.</span>
+<span class="sd">            Feature-aligned F-statistic scores. Constant features may have NaN</span>
+<span class="sd">            scores, while perfect separation may produce positive infinity;</span>
+<span class="sd">            ``select_features`` handles both according to the base score</span>
+<span class="sd">            contract.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If task is not &#39;classification&#39; or &#39;regression&#39;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">score_func</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="n">f_classif</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="n">f_regression</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+<span class="sd">            ValueError: If task is not 'classification' or 'regression'.</span>
+<span class="sd">        """</span>
+        <span class="n">score_func</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"classification"</span><span class="p">:</span> <span class="n">f_classif</span><span class="p">,</span> <span class="s2">"regression"</span><span class="p">:</span> <span class="n">f_regression</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">score_func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Task must be 'classification' or 'regression'."</span><span class="p">)</span>
         <span class="n">scores</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">score_func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">scores</span></div>
 </div>

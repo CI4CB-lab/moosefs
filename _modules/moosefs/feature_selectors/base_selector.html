@@ -79,20 +79,22 @@
 <div class="viewcode-block" id="FeatureSelector">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.base_selector.FeatureSelector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FeatureSelector</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for feature selection.</span>
+<span class="w">    </span><span class="sd">"""Base class for feature selection.</span>
 
-<span class="sd">    Subclasses must implement ``compute_scores`` returning a score per feature.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    Subclasses must implement ``compute_scores`` returning one real numeric</span>
+<span class="sd">    score per input feature. NaN and negative-infinite scores are undefined and</span>
+<span class="sd">    are excluded from selection; positive infinity is a valid strongest score.</span>
+<span class="sd">    """</span>
 
 <div class="viewcode-block" id="FeatureSelector.__init__">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.base_selector.FeatureSelector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the selector.</span>
+<span class="w">        </span><span class="sd">"""Initialize the selector.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            task: Either &quot;classification&quot; or &quot;regression&quot;.</span>
+<span class="sd">            task: Either "classification" or "regression".</span>
 <span class="sd">            num_features_to_select: Number of top features to select.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span> <span class="o">=</span> <span class="n">num_features_to_select</span></div>
 
@@ -100,25 +102,55 @@
 <div class="viewcode-block" id="FeatureSelector.select_features">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.base_selector.FeatureSelector.select_features">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">select_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select top features using the computed scores.</span>
+<span class="w">        </span><span class="sd">"""Select top features using the computed scores.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            X: Training samples, shape (n_samples, n_features).</span>
 <span class="sd">            y: Targets, shape (n_samples,) or (n_samples, n_outputs).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Tuple (scores, indices) where indices are the top-k positions.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">            Tuple ``(scores, indices)``. Scores retain their original feature</span>
+<span class="sd">            alignment, and indices contain the top-k original feature</span>
+<span class="sd">            positions. Equal scores are ordered by increasing feature index.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If scores are not a one-dimensional real numeric array</span>
+<span class="sd">                with one value per feature, or fewer than the requested number</span>
+<span class="sd">                of defined scores are available. NaN and negative infinity are</span>
+<span class="sd">                undefined; positive infinity remains selectable.</span>
+<span class="sd">        """</span>
         <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_scores</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">scores</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">]</span>
+        <span class="n">score_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">score_array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Feature scores must be a one-dimensional array."</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">score_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Feature scores length (</span><span class="si">{</span><span class="n">score_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">) must match "</span>
+                <span class="sa">f</span><span class="s2">"the number of input features (</span><span class="si">{</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">)."</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">score_array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">score_array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">complexfloating</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Feature scores must contain real numeric values."</span><span class="p">)</span>
+
+        <span class="n">valid_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">score_array</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isneginf</span><span class="p">(</span><span class="n">score_array</span><span class="p">)</span>
+        <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">valid_mask</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">valid_indices</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Cannot select </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="si">}</span><span class="s2"> features: only </span><span class="si">{</span><span class="n">valid_indices</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> have defined scores."</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Sort scores descending while preserving increasing original feature</span>
+        <span class="c1"># index for ties. Positive infinity naturally ranks before finite scores.</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">lexsort</span><span class="p">((</span><span class="o">-</span><span class="n">valid_indices</span><span class="p">,</span> <span class="n">score_array</span><span class="p">[</span><span class="n">valid_indices</span><span class="p">]))[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">valid_indices</span><span class="p">[</span><span class="n">order</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">]]</span>
         <span class="k">return</span> <span class="n">scores</span><span class="p">,</span> <span class="n">indices</span></div>
 
 
 <div class="viewcode-block" id="FeatureSelector.compute_scores">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.base_selector.FeatureSelector.compute_scores">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute per-feature scores (override in subclasses).&quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement compute_scores&quot;</span><span class="p">)</span></div>
+<span class="w">        </span><span class="sd">"""Compute per-feature scores (override in subclasses)."""</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Subclasses must implement compute_scores"</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

@@ -99,22 +99,22 @@
 <div class="viewcode-block" id="BaseMetric">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.BaseMetric">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseMetric</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for computing evaluation metrics.</span>
+<span class="w">    </span><span class="sd">"""Base class for computing evaluation metrics.</span>
 
 <span class="sd">    Trains a small battery of models and aggregates per-model metric values.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
 <div class="viewcode-block" id="BaseMetric.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.BaseMetric.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the metric with a task type.</span>
+<span class="w">        </span><span class="sd">"""Initialize the metric with a task type.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name: Human-readable metric name.</span>
-<span class="sd">            task: Either &quot;classification&quot; or &quot;regression&quot;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;classification&quot;</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">}:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
+<span class="sd">            task: Either "classification" or "regression".</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"classification"</span><span class="p">,</span> <span class="s2">"regression"</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Task must be 'classification' or 'regression'."</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
@@ -124,38 +124,38 @@
 <div class="viewcode-block" id="BaseMetric.model_signature">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.BaseMetric.model_signature">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">model_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a stable signature describing the internal model set.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return a stable signature describing the internal model set."""</span>
         <span class="n">signature_payload</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">name</span><span class="p">:</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__qualname__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__qualname__</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
                 <span class="n">model</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">joblib_hash</span><span class="p">(</span><span class="n">signature_payload</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span></div>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">joblib_hash</span><span class="p">(</span><span class="n">signature_payload</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span></div>
 
 
 <div class="viewcode-block" id="BaseMetric._initialize_models">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.BaseMetric._initialize_models">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_models</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize task-specific models.</span>
+<span class="w">        </span><span class="sd">"""Initialize task-specific models.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Mapping from model label to estimator instance.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># Keep inner models single-threaded to avoid nested parallelism.</span>
         <span class="c1"># Logistic regression is scale-sensitive, so it standardizes its</span>
         <span class="c1"># inputs; tree-based models are scale-invariant and run unscaled.</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;Random Forest&quot;</span><span class="p">:</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                <span class="s2">&quot;Logistic Regression&quot;</span><span class="p">:</span> <span class="n">make_pipeline</span><span class="p">(</span><span class="n">StandardScaler</span><span class="p">(),</span> <span class="n">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">)),</span>
-                <span class="s2">&quot;Hist Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">HistGradientBoostingClassifier</span><span class="p">(),</span>
+            <span class="s2">"classification"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"Random Forest"</span><span class="p">:</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                <span class="s2">"Logistic Regression"</span><span class="p">:</span> <span class="n">make_pipeline</span><span class="p">(</span><span class="n">StandardScaler</span><span class="p">(),</span> <span class="n">LogisticRegression</span><span class="p">(</span><span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">)),</span>
+                <span class="s2">"Hist Gradient Boosting"</span><span class="p">:</span> <span class="n">HistGradientBoostingClassifier</span><span class="p">(),</span>
             <span class="p">},</span>
-            <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;Random Forest&quot;</span><span class="p">:</span> <span class="n">RandomForestRegressor</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                <span class="s2">&quot;Linear Regression&quot;</span><span class="p">:</span> <span class="n">LinearRegression</span><span class="p">(),</span>
-                <span class="s2">&quot;Hist Gradient Boosting&quot;</span><span class="p">:</span> <span class="n">HistGradientBoostingRegressor</span><span class="p">(),</span>
+            <span class="s2">"regression"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"Random Forest"</span><span class="p">:</span> <span class="n">RandomForestRegressor</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                <span class="s2">"Linear Regression"</span><span class="p">:</span> <span class="n">LinearRegression</span><span class="p">(),</span>
+                <span class="s2">"Hist Gradient Boosting"</span><span class="p">:</span> <span class="n">HistGradientBoostingRegressor</span><span class="p">(),</span>
             <span class="p">},</span>
         <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">]</span></div>
 
@@ -169,7 +169,7 @@
         <span class="n">X_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">y_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Train all models and generate predictions.</span>
+<span class="w">        </span><span class="sd">"""Train all models and generate predictions.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            X_train: Training features.</span>
@@ -179,16 +179,16 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Dict keyed by model name with predictions and optional probabilities.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
             <span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
-            <span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;classification&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">"classification"</span> <span class="k">else</span> <span class="kc">None</span>
             <span class="n">results</span><span class="p">[</span><span class="n">model_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;predictions&quot;</span><span class="p">:</span> <span class="n">predictions</span><span class="p">,</span>
-                <span class="s2">&quot;probabilities&quot;</span><span class="p">:</span> <span class="n">probabilities</span><span class="p">,</span>
+                <span class="s2">"predictions"</span><span class="p">:</span> <span class="n">predictions</span><span class="p">,</span>
+                <span class="s2">"probabilities"</span><span class="p">:</span> <span class="n">probabilities</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">return</span> <span class="n">results</span></div>
@@ -203,8 +203,8 @@
         <span class="n">X_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">y_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the metric (implemented by subclasses).&quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method must be overridden in subclasses.&quot;</span><span class="p">)</span></div>
+<span class="w">        </span><span class="sd">"""Compute the metric (implemented by subclasses)."""</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"This method must be overridden in subclasses."</span><span class="p">)</span></div>
 </div>
 
 
@@ -212,12 +212,12 @@
 <div class="viewcode-block" id="RegressionMetric">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RegressionMetric">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RegressionMetric</span><span class="p">(</span><span class="n">BaseMetric</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for regression metrics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Base class for regression metrics."""</span>
 
 <div class="viewcode-block" id="RegressionMetric.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RegressionMetric.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;regression&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">"regression"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RegressionMetric.compute">
@@ -229,7 +229,7 @@
         <span class="n">X_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">y_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Average the metric over the internal model set.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Average the metric over the internal model set."""</span>
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_and_predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregate_from_results</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
 
@@ -237,15 +237,15 @@
 <div class="viewcode-block" id="RegressionMetric.aggregate_from_results">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RegressionMetric.aggregate_from_results">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_from_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_test</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Aggregate metric value from cached prediction results.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_func</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;predictions&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()]))</span></div>
+<span class="w">        </span><span class="sd">"""Aggregate metric value from cached prediction results."""</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_func</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s2">"predictions"</span><span class="p">])</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()]))</span></div>
 
 
 <div class="viewcode-block" id="RegressionMetric._metric_func">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RegressionMetric._metric_func">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_metric_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Metric function to be overridden by subclasses.&quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method must be overridden in subclasses.&quot;</span><span class="p">)</span></div>
+<span class="w">        </span><span class="sd">"""Metric function to be overridden by subclasses."""</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"This method must be overridden in subclasses."</span><span class="p">)</span></div>
 </div>
 
 
@@ -256,7 +256,7 @@
 <div class="viewcode-block" id="R2Score.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.R2Score.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;R2 Score&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"R2 Score"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="R2Score._metric_func">
@@ -273,7 +273,7 @@
 <div class="viewcode-block" id="MeanAbsoluteError.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.MeanAbsoluteError.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Mean Absolute Error&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Mean Absolute Error"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MeanAbsoluteError._metric_func">
@@ -290,7 +290,7 @@
 <div class="viewcode-block" id="MeanSquaredError.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.MeanSquaredError.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Mean Squared Error&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Mean Squared Error"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MeanSquaredError._metric_func">
@@ -304,12 +304,12 @@
 <div class="viewcode-block" id="ClassificationMetric">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.ClassificationMetric">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ClassificationMetric</span><span class="p">(</span><span class="n">BaseMetric</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for classification metrics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Base class for classification metrics."""</span>
 
 <div class="viewcode-block" id="ClassificationMetric.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.ClassificationMetric.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;classification&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">"classification"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ClassificationMetric.compute">
@@ -321,7 +321,7 @@
         <span class="n">X_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">y_test</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Average the metric over the internal model set.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Average the metric over the internal model set."""</span>
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_and_predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregate_from_results</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
 
@@ -329,10 +329,10 @@
 <div class="viewcode-block" id="ClassificationMetric.aggregate_from_results">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.ClassificationMetric.aggregate_from_results">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_from_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_test</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Aggregate metric value from cached prediction results.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Aggregate metric value from cached prediction results."""</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
-                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_func</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;predictions&quot;</span><span class="p">],</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;probabilities&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_func</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s2">"predictions"</span><span class="p">],</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"probabilities"</span><span class="p">))</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
             <span class="p">)</span>
         <span class="p">)</span></div>
 
@@ -345,8 +345,8 @@
         <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">y_proba</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Metric function to be overridden by subclasses.&quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method must be overridden in subclasses.&quot;</span><span class="p">)</span></div>
+<span class="w">        </span><span class="sd">"""Metric function to be overridden by subclasses."""</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"This method must be overridden in subclasses."</span><span class="p">)</span></div>
 </div>
 
 
@@ -357,7 +357,7 @@
 <div class="viewcode-block" id="LogLoss.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.LogLoss.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Log Loss&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Log Loss"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LogLoss._metric_func">
@@ -374,13 +374,13 @@
 <div class="viewcode-block" id="F1Score.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.F1Score.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;F1 Score&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"F1 Score"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="F1Score._metric_func">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.F1Score._metric_func">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_metric_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_proba</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">f1_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;macro&quot;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">f1_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">"macro"</span><span class="p">)</span></div>
 </div>
 
 
@@ -391,7 +391,7 @@
 <div class="viewcode-block" id="Accuracy.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.Accuracy.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Accuracy&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Accuracy"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Accuracy._metric_func">
@@ -408,13 +408,13 @@
 <div class="viewcode-block" id="PrecisionScore.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.PrecisionScore.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Precision Score&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Precision Score"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PrecisionScore._metric_func">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.PrecisionScore._metric_func">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_metric_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_proba</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">precision_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;macro&quot;</span><span class="p">,</span> <span class="n">zero_division</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">precision_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">"macro"</span><span class="p">,</span> <span class="n">zero_division</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
 </div>
 
 
@@ -425,13 +425,13 @@
 <div class="viewcode-block" id="RecallScore.__init__">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RecallScore.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;Recall Score&quot;</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">"Recall Score"</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RecallScore._metric_func">
 <a class="viewcode-back" href="../../../metrics.html#moosefs.metrics.performance_metrics.RecallScore._metric_func">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">_metric_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_proba</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">recall_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;macro&quot;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">recall_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">"macro"</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

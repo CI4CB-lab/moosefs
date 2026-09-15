@@ -83,19 +83,19 @@
 <div class="viewcode-block" id="MRMRSelector">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.mrmr_selector.MRMRSelector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MRMRSelector</span><span class="p">(</span><span class="n">FeatureSelector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature selector using Minimum Redundancy Maximum Relevance (MRMR).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Feature selector using Minimum Redundancy Maximum Relevance (MRMR)."""</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;MRMR&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"MRMR"</span>
 
 <div class="viewcode-block" id="MRMRSelector.__init__">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.mrmr_selector.MRMRSelector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Args:</span>
-<span class="sd">            task: ML task (&#39;classification&#39; or &#39;regression&#39;).</span>
+<span class="sd">            task: ML task ('classification' or 'regression').</span>
 <span class="sd">            num_features_to_select: Number of features to select.</span>
 <span class="sd">            **kwargs: Additional arguments for mRMR functions.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span></div>
 
@@ -103,7 +103,7 @@
 <div class="viewcode-block" id="MRMRSelector.compute_scores">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.mrmr_selector.MRMRSelector.compute_scores">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Computes feature scores using the MRMR algorithm.</span>
 
 <span class="sd">        Args:</span>
@@ -112,21 +112,21 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            MRMR scores for each feature.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="n">X</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;feature_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])])</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">"feature_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])])</span>
         <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;X must be a pandas DataFrame or a NumPy array.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"X must be a pandas DataFrame or a NumPy array."</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
             <span class="n">y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
 
         <span class="n">score_func</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="n">mrmr_classif</span><span class="p">,</span>
-            <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="n">mrmr_regression</span><span class="p">,</span>
+            <span class="s2">"classification"</span><span class="p">:</span> <span class="n">mrmr_classif</span><span class="p">,</span>
+            <span class="s2">"regression"</span><span class="p">:</span> <span class="n">mrmr_regression</span><span class="p">,</span>
         <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">score_func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Task must be 'classification' or 'regression'."</span><span class="p">)</span>
 
         <span class="n">_</span><span class="p">,</span> <span class="n">relevance</span><span class="p">,</span> <span class="n">redundancy</span> <span class="o">=</span> <span class="n">score_func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_features_to_select</span><span class="p">,</span> <span class="n">return_scores</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
 

@@ -84,19 +84,19 @@
 <div class="viewcode-block" id="SVMSelector">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.svm_selector.SVMSelector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SVMSelector</span><span class="p">(</span><span class="n">FeatureSelector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature selector using SVM coefficients.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Feature selector using SVM coefficients."""</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;SVM&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"SVM"</span>
 
 <div class="viewcode-block" id="SVMSelector.__init__">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.svm_selector.SVMSelector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Args:</span>
-<span class="sd">            task: ML task (&#39;classification&#39; or &#39;regression&#39;).</span>
+<span class="sd">            task: ML task ('classification' or 'regression').</span>
 <span class="sd">            num_features_to_select: Number of features to select.</span>
 <span class="sd">            **kwargs: Additional arguments for the SVM model.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span></div>
 
@@ -104,7 +104,7 @@
 <div class="viewcode-block" id="SVMSelector.compute_scores">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.svm_selector.SVMSelector.compute_scores">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Computes feature importances using an SVM model.</span>
 
 <span class="sd">        Args:</span>
@@ -115,19 +115,19 @@
 <span class="sd">            Feature importances derived from SVM model coefficients.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If task is not &#39;classification&#39; or &#39;regression&#39;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model_cls</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="n">SVC</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="n">SVR</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+<span class="sd">            ValueError: If task is not 'classification' or 'regression'.</span>
+<span class="sd">        """</span>
+        <span class="n">model_cls</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"classification"</span><span class="p">:</span> <span class="n">SVC</span><span class="p">,</span> <span class="s2">"regression"</span><span class="p">:</span> <span class="n">SVR</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">model_cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Task must be 'classification' or 'regression'."</span><span class="p">)</span>
 
         <span class="c1"># Only remove `random_state` for SVR</span>
         <span class="n">filtered_kwargs</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;random_state&quot;</span><span class="p">}</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;regression&quot;</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span>
+            <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">"random_state"</span><span class="p">}</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">==</span> <span class="s2">"regression"</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span>
         <span class="p">)</span>
 
         <span class="c1"># Standardize features so coefficient magnitudes are comparable.</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">make_pipeline</span><span class="p">(</span><span class="n">StandardScaler</span><span class="p">(),</span> <span class="n">model_cls</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">filtered_kwargs</span><span class="p">))</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">make_pipeline</span><span class="p">(</span><span class="n">StandardScaler</span><span class="p">(),</span> <span class="n">model_cls</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="s2">"linear"</span><span class="p">,</span> <span class="o">**</span><span class="n">filtered_kwargs</span><span class="p">))</span>
         <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
         <span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">scores</span></div>

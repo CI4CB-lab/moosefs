@@ -77,7 +77,7 @@
 <div class="viewcode-block" id="Feature">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.feature.Feature">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Feature</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Container for a single feature.</span>
+<span class="w">    </span><span class="sd">"""Container for a single feature.</span>
 
 <span class="sd">    Stores the feature name, an optional score, and whether it is selected.</span>
 
@@ -85,9 +85,9 @@
 <span class="sd">        name: Feature identifier (e.g., column name).</span>
 <span class="sd">        score: Optional importance/score for ranking.</span>
 <span class="sd">        selected: Whether the feature is selected.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="s2">&quot;selected&quot;</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"score"</span><span class="p">,</span> <span class="s2">"selected"</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Feature.__init__">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.feature.Feature.__init__">[docs]</a>
@@ -100,32 +100,32 @@
 <div class="viewcode-block" id="Feature.set_score">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.feature.Feature.set_score">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">score</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the feature score.</span>
+<span class="w">        </span><span class="sd">"""Set the feature score.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            score: Importance/score value.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">score</span> <span class="o">=</span> <span class="n">score</span></div>
 
 
 <div class="viewcode-block" id="Feature.set_selected">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.feature.Feature.set_selected">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_selected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selected</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the selected flag.</span>
+<span class="w">        </span><span class="sd">"""Set the selected flag.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            selected: True if selected; otherwise False.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">selected</span> <span class="o">=</span> <span class="n">selected</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a readable string representation.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Feature(name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, score=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">score</span><span class="si">}</span><span class="s2">, selected=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">selected</span><span class="si">}</span><span class="s2">)&quot;</span>
+<span class="w">        </span><span class="sd">"""Return a readable string representation."""</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Feature(name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, score=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">score</span><span class="si">}</span><span class="s2">, selected=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">selected</span><span class="si">}</span><span class="s2">)"</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return an unambiguous representation for debugging.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Feature(&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">score</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">selected</span><span class="si">}</span><span class="s2">)&quot;</span></div>
+<span class="w">        </span><span class="sd">"""Return an unambiguous representation for debugging."""</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Feature('</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">', </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">score</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">selected</span><span class="si">}</span><span class="s2">)"</span></div>
 
 </pre></div>
 

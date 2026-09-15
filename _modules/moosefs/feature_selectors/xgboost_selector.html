@@ -82,19 +82,19 @@
 <div class="viewcode-block" id="XGBoostSelector">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.xgboost_selector.XGBoostSelector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">XGBoostSelector</span><span class="p">(</span><span class="n">FeatureSelector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature selector using XGBoost feature importance.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Feature selector using XGBoost feature importance."""</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;XGBoost&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"XGBoost"</span>
 
 <div class="viewcode-block" id="XGBoostSelector.__init__">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.xgboost_selector.XGBoostSelector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Args:</span>
-<span class="sd">            task: ML task (&#39;classification&#39; or &#39;regression&#39;).</span>
+<span class="sd">            task: ML task ('classification' or 'regression').</span>
 <span class="sd">            num_features_to_select: Number of features to select.</span>
 <span class="sd">            **kwargs: Additional arguments for the XGBoost model.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">num_features_to_select</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span></div>
 
@@ -102,7 +102,7 @@
 <div class="viewcode-block" id="XGBoostSelector.compute_scores">
 <a class="viewcode-back" href="../../../feature_selectors.html#moosefs.feature_selectors.xgboost_selector.XGBoostSelector.compute_scores">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Computes feature importances using an XGBoost model.</span>
 
 <span class="sd">        Args:</span>
@@ -113,11 +113,11 @@
 <span class="sd">            Feature importances from the trained XGBoost model.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If task is not &#39;classification&#39; or &#39;regression&#39;.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">model_cls</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="n">XGBClassifier</span><span class="p">,</span> <span class="s2">&quot;regression&quot;</span><span class="p">:</span> <span class="n">XGBRegressor</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+<span class="sd">            ValueError: If task is not 'classification' or 'regression'.</span>
+<span class="sd">        """</span>
+        <span class="n">model_cls</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"classification"</span><span class="p">:</span> <span class="n">XGBClassifier</span><span class="p">,</span> <span class="s2">"regression"</span><span class="p">:</span> <span class="n">XGBRegressor</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">model_cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Task must be &#39;classification&#39; or &#39;regression&#39;.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Task must be 'classification' or 'regression'."</span><span class="p">)</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">model_cls</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
         <span class="n">scores</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">feature_importances_</span>

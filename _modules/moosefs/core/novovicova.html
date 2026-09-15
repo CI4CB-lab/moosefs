@@ -77,21 +77,21 @@
 <div class="viewcode-block" id="StabilityNovovicova">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.novovicova.StabilityNovovicova">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StabilityNovovicova</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Computes the stability of feature selection algorithms based on Novovicová et al. (2009).</span>
 
 <span class="sd">    References:</span>
-<span class="sd">        Novovicová, J., Somol, P., &amp; Pudil, P. (2009). &quot;A New Measure of Feature Selection</span>
-<span class="sd">        Algorithms&#39; Stability.&quot; IEEE International Conference on Data Mining Workshops.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        Novovicová, J., Somol, P., &amp; Pudil, P. (2009). "A New Measure of Feature Selection</span>
+<span class="sd">        Algorithms' Stability." IEEE International Conference on Data Mining Workshops.</span>
+<span class="sd">    """</span>
 
 <div class="viewcode-block" id="StabilityNovovicova.__init__">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.novovicova.StabilityNovovicova.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selected_features</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Args:</span>
 <span class="sd">            selected_features: A list of sets or lists, where each represents selected features in a dataset.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_inputs</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">set</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span> <span class="k">for</span> <span class="n">sel</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">]</span>  <span class="c1"># Convert all to sets</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span> <span class="k">for</span> <span class="n">sel</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">)</span>  <span class="c1"># Total feature occurrences</span>
@@ -102,33 +102,33 @@
 <a class="viewcode-back" href="../../../core.html#moosefs.core.novovicova.StabilityNovovicova._validate_inputs">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_inputs</span><span class="p">(</span><span class="n">selected_features</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validates the input format, ensuring consistency and non-emptiness.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Validates the input format, ensuring consistency and non-emptiness."""</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_features</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Feature selections cannot be empty.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Feature selections cannot be empty."</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selected_features</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Feature selections must be a list of sets or lists.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Feature selections must be a list of sets or lists."</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">sel</span><span class="p">,</span> <span class="p">(</span><span class="nb">set</span><span class="p">,</span> <span class="nb">list</span><span class="p">))</span> <span class="k">for</span> <span class="n">sel</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Each feature selection must be a set or a list.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Each feature selection must be a set or a list."</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">sel</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Feature selections cannot contain empty sets or lists.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Feature selections cannot contain empty sets or lists."</span><span class="p">)</span>
 
         <span class="c1"># Ensure feature types are consistent</span>
         <span class="n">first_item</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">selected_features</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
         <span class="n">element_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">first_item</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">element_type</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sel</span><span class="p">)</span> <span class="k">for</span> <span class="n">sel</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All features must be of the same type across selections.&quot;</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"All features must be of the same type across selections."</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="StabilityNovovicova.compute_stability">
 <a class="viewcode-back" href="../../../core.html#moosefs.core.novovicova.StabilityNovovicova.compute_stability">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_stability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Computes the stability measure SH(S), ranging from 0 (no stability) to 1 (full stability).</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Stability score.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># Stability is not meaningful for a single subset or empty selection.</span>
 
